@@ -188,23 +188,23 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
 
   const handLayout = () => {
     const n = combat.hand.length;
-    const cw = 220 * HAND_SCALE;
-    const avail = 392;
-    const step = n <= 1 ? 0 : Math.min(cw * 0.78, (avail - cw) / (n - 1));
-    const left = (420 - (step * (n - 1) + cw)) / 2;
-    return { n, cw, step, left };
+    const W = Math.max(280, (root.clientWidth || 412) - 14);
+    const scale = Math.max(0.42, Math.min(HAND_SCALE, W / (220 * (1 + 0.6 * (Math.min(Math.max(n, 1), 5) - 1)))));
+    const cw = 220 * scale;
+    const step = n <= 1 ? 0 : Math.min(cw * 0.8, (W - cw) / (n - 1));
+    return { n, cw, step, scale };
   };
 
   const renderHand = () => {
     clear(handEl);
-    const { n, cw, step } = handLayout();
+    const { n, cw, step, scale } = handLayout();
     combat.hand.forEach((c, i) => {
       const mid = (n - 1) / 2;
       const off = i - mid;
       const can = combat.canPlay(c.uid);
       const d = CARDS[c.id];
       const el = cardEl(c.id, {
-        up: c.up, scale: HAND_SCALE, costNow: combat.cost(c), returned: c.returned, noafford: !can && !d.unplayable && d.type !== 'debt', unplayable: !!d.unplayable,
+        up: c.up, scale, costNow: combat.cost(c), returned: c.returned, noafford: !can && !d.unplayable && d.type !== 'debt', unplayable: !!d.unplayable,
       });
       const x = (i - mid) * step - cw / 2;
       const y = Math.abs(off) * Math.abs(off) * 2.2;
