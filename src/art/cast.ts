@@ -13,7 +13,7 @@ const gravedigger: SpriteDef = {
       y: 0,
       half: [
         'ddd', 'dcccc', 'dccCCC', 'dccCCCC', 'ddooOOOOO', 'cccccccccc', 'ddddddddddd',
-        '.dffFffff', '.dfggggg', '.dgGGGGg', '.drrRRRR',
+        '.dffFffff', '.dffffff', '.dffffff', '.drrRRRR',
       ],
     },
     { y: 11, half: cloak({ y0: 0, y1: 37, hw0: 8, hw1: 12, curve: 0.8, folds: 1.1, seed: 5, pal: 'wWoO' }) },

@@ -267,3 +267,22 @@ h1, h2, h3, .btn, .title-l, .banner, .end-turn, .tab, .intent, .float, .kicker, 
 
 .split-body h2, .vis-cap h2 { font-size: 13px; line-height: 1.35; }
 .vis-cap p { font-size: 20px; }
+
+/* ───── упрощение: плоские прямоугольные рамки без декоративных вырезов ───── */
+.panel, .sheet .body, .btn, .node, .board, .toast, .end-turn, .slab { box-shadow: 0 0 0 2px var(--edge, #5a4a30), 0 6px 0 2px rgba(0,0,0,.45) !important; }
+.sheet .body { --edge: #5a4a30; } .btn.primary { --edge: #ffe9b0; }
+.pc { clip-path: none !important; box-shadow: 0 0 0 2px var(--c), 0 5px 0 2px rgba(0,0,0,.5) !important; padding: 4px; gap: 3px; background: #14101c; }
+.pc .nm { box-shadow: none; background: #2a1e16; padding: 3px 4px 2px 24px; min-height: 20px; margin: 0; }
+.pc .art { box-shadow: 0 0 0 1px #000; margin: 0; }
+.pc .ty { align-self: stretch; margin: 0; clip-path: none; text-align: center; padding: 1px 0; font-size: 6px; background: var(--c); }
+.pc .tx { box-shadow: none; background: #0c0910; }
+.pc .gm { display: none; }
+.pc .cst { left: 2px; top: 2px; width: 20px; height: 20px; filter: none; background: var(--amber); }
+.pc .cst svg { display: none; } .pc .cst b { margin: 0; font-size: 9px; }
+.pc.legend::after { display: none; }
+.node { width: 38px; height: 38px; margin: -19px 0 0 -19px; } .node.boss { width: 58px; height: 58px; margin: -29px 0 0 -29px; }
+.node.avail { box-shadow: 0 0 0 2px var(--amber), 0 0 18px rgba(232,169,74,.7) !important; }
+.opt { box-shadow: 0 0 0 1px #5a4a30, inset 3px 0 0 var(--amber) !important; }
+.sig, .chip, .pile, .icon-btn, .tab, .st, .intent, .shield, .relic { box-shadow: 0 0 0 1px #4a4a58 !important; }
+.bar { box-shadow: 0 0 0 1px #000 !important; }
+.orb { box-shadow: 0 0 0 2px #000 !important; }

@@ -92,13 +92,11 @@ export function compose(def: SpriteDef): string[][] {
     const [x, y] = k.split(',').map(Number);
     out[y - minY][x - minX] = v;
   }
-  // рваный низ
+  // ровный зубчатый подол: правильный узор, без случайности
   if (def.tatter) {
-    const r = new Rng(def.seed ?? 7);
-    for (let t = 0; t < def.tatter; t++) {
+    for (let t = 0; t < 2; t++) {
       const y = h - 1 - t;
-      const p = 0.55 - t * (0.5 / def.tatter);
-      for (let x = 0; x < w; x++) if (out[y][x] !== '.' && r.next() < p) out[y][x] = '.';
+      for (let x = 0; x < w; x++) if (out[y][x] !== '.' && (x + t * 3) % 6 < 2) out[y][x] = '.';
     }
   }
   return out;
@@ -188,10 +186,7 @@ function renderGrid(g: string[][], def: SpriteDef, frame: number, blinking: bool
         const lit = rim === 'right' ? at(x + 1, y) === '.' : rim === 'left' ? at(x - 1, y) === '.' : at(x, y - 1) === '.';
         const warm: Record<string, string> = { d: 'o', c: 'O', C: 'a', h: 'A', g: 'G', G: 'q', W: 'O', w: 'o', n: 'B', m: 'M', v: 'V', u: 'U' };
         col = hex(PAL[lit && warm[ch] ? (rim === 'top' ? warm[ch] : warm[ch]) : ch] ?? '#ff00ff');
-        if (lit && warm[ch]) {
-          // не весь край: рассыпаем, чтобы выглядело как свет, а не как обводка
-          if ((x * 7 + y * 13) % 4 === 0) col = hex(PAL[ch]);
-        }
+
       }
       set(x + 1, y + oy, col);
     }
@@ -201,7 +196,6 @@ function renderGrid(g: string[][], def: SpriteDef, frame: number, blinking: bool
 
 export function makeSprite(def: SpriteDef): Sprite {
   const g = scale2x(compose(def));
-  texture(g);
   const frames = [0, 1, 2, 3].map((f) => renderGrid(g, def, f, false));
   const blink = renderGrid(g, def, 0, true);
   const bodyX = (def as unknown as { ax?: number }).ax;
@@ -230,22 +224,20 @@ export function cloak(o: { y0: number; y1: number; hw0: number; hw1: number; cur
   const pal = o.pal ?? 'dcCh';
   const rows: string[] = [];
   const n = o.y1 - o.y0 + 1;
-  const r = new Rng(o.seed ?? 3);
-  const fold = Array.from({ length: 6 }, () => r.next() * 6);
   for (let k = 0; k < n; k++) {
     const t = k / Math.max(1, n - 1);
     const hw = Math.round(o.hw0 + (o.hw1 - o.hw0) * Math.pow(t, o.curve ?? 1));
     let s = '';
     for (let j = 0; j < hw; j++) {
-      const fromEdge = j; // 0 = край
-      const f = Math.sin((hw - 1 - j) * (o.folds ?? 1.15) + fold[(j + k) % 6] * 0.3 + k * 0.12);
+      const fromCenter = hw - 1 - j;
       let ch: string;
-      if (fromEdge === 0) ch = pal[0];
-      else if (fromEdge === 1) ch = pal[1];
-      else if (j === hw - 1) ch = pal[0];
-      else if (f > 0.55) ch = pal[3 % pal.length];
-      else if (f > -0.1) ch = pal[2];
-      else ch = pal[1];
+      if (j === 0) ch = pal[0];
+      else if (j === 1) ch = pal[1];
+      else if (fromCenter === 0) ch = pal[0];
+      else {
+        const band = fromCenter % 6;
+        ch = band === 3 ? pal[0] : band === 4 || band === 5 ? pal[2] : band === 1 ? pal[3 % pal.length] : pal[1];
+      }
       s += ch;
     }
     rows.push(s);
