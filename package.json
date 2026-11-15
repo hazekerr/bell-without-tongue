@@ -1,0 +1,36 @@
+{
+  "name": "bell-without-tongue",
+  "version": "0.1.0",
+  "description": "Колокол без Языка — мрачный мобильный deckbuilder-roguelike",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "sim": "vite-node scripts/sim.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hazekerr/bell-without-tongue.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hazekerr/bell-without-tongue/issues"
+  },
+  "homepage": "https://github.com/hazekerr/bell-without-tongue#readme",
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@fontsource/eb-garamond": "^5.3.0",
+    "@fontsource/forum": "^5.3.0"
+  },
+  "private": true,
+  "type": "module"
+}
