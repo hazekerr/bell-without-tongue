@@ -101,5 +101,6 @@ export type GameEvent =
   | { t: 'death'; enemy: number }
   | { t: 'summon'; enemy: number }
   | { t: 'turn'; who: 'hero' | 'enemy'; n: number }
+  | { t: 'act'; enemy: number; name: string }
   | { t: 'log'; text: string }
   | { t: 'end'; result: 'win' | 'lose' };

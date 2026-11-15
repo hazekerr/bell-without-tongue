@@ -428,6 +428,7 @@ export class Combat {
         if (ENEMIES[e.def].tier !== 'normal') e.stunImmune = 3;
         this.emit({ t: 'log', text: `${ENEMIES[e.def].name} скован и пропускает ход.` });
       } else {
+        this.emit({ t: 'act', enemy: e.uid, name: e.intent.name });
         this.execute(e, e.intent);
         if (this.hero.hp <= 0) break;
       }

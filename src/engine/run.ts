@@ -53,6 +53,8 @@ export interface RunState {
   bodiesSeen: number;
   /** Идёт ли сейчас узел (для автосохранения): id узла. */
   active: string | null;
+  /** Для продолжения: состояние ГСЧ и счётчики до входа в узел. */
+  resume?: { rng: number; enc: number; ev: number };
   startedAt: number;
 }
 
@@ -339,7 +341,7 @@ export function nextCircle(run: RunState, chron: Chronicle) {
 const CAUSE: Record<string, string> = {
   drowned_laundress: 'Выжат прачкой', silt_hound: 'Загрызен тинным псом', stone_fisher: 'Пойман в сеть', mussel: 'Зазвучал в хоре ракушек',
   alban: 'Закопан Альбаном', drowned_bellman: 'Прозвонен насквозь', tide_mother: 'Смыт Матерью Приливов', candle_bearer: 'Сожжён свечником',
-  ash_monk: 'Обращён в пепел', stained_seraph: 'Порезан витражом', choir_reaper: 'Скошен Жнецом Хора', choirmaster: 'Принят в хор Оттона',
+  ash_monk: 'Обращён в пепел', stained_seraph: 'Порезан витражом', choir_reaper: 'Скошен Жнецом Хора', choirmaster: 'Принят в хор Оттона', gatekeeper: 'Принят у Врат',
 };
 const TAIL_GENERIC = ['Копал неглубоко.', 'Просил не звонить.', 'Не доиграл Аккорд.', 'Забыл про Броню.', 'Верил расписанию.', 'Шёл на звук.', 'Слишком надеялся на Тлен.'];
 

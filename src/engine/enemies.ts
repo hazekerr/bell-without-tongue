@@ -64,6 +64,13 @@ export const ENEMIES: Record<string, EnemyDef> = {
     },
   },
 
+  /* ───────────── Пролог ───────────── */
+  gatekeeper: {
+    id: 'gatekeeper', name: 'Привратник Колодца', hp: [400, 400], circle: 1, tier: 'boss', art: 'alban',
+    blurb: 'Стоит у Врат Нисхождения. Пропускает всех вниз. Назад — не всегда.',
+    pick: (e) => atk('judgement', 'Приговор', 6 + 4 * t(e)),
+  },
+
   /* ───────────── Круг II · Рёбра ───────────── */
   candle_bearer: {
     id: 'candle_bearer', name: 'Свечник', hp: [6, 8], circle: 2, tier: 'normal', art: 'candle',
