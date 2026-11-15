@@ -1,0 +1,216 @@
+/* Пиксель-арт движок: спрайты рисуются вручную текстом (по букве на пиксель),
+   затем получают контур, подсветку закатом и анимацию (покачивание, мигание, мерцание). */
+import { Rng } from '../engine/rng.ts';
+
+export const PAL: Record<string, string> = {
+  k: '#07080c', f: '#050608',
+  d: '#12141c', c: '#1d2230', C: '#2c3447', h: '#445168',
+  g: '#3f6a60', G: '#6f9a8a', q: '#a9cdb8',
+  b: '#cfc7b2', B: '#9a9484', n: '#5e5a52',
+  w: '#2e2018', W: '#51371f', o: '#8a5a2b', O: '#c0833a',
+  a: '#e8a94a', A: '#f6cf7a', y: '#fff0c0',
+  r: '#6a1a20', R: '#b3342e', e: '#ff6a4f',
+  v: '#3b2c58', V: '#6f55a0',
+  u: '#27486b', U: '#4f84b0', i: '#9cc3e6',
+  m: '#4d4c50', M: '#8e8d92',
+  s: '#7a8a96', S: '#b9c6cf',
+};
+/** Глаза: мигают, цвет по букве. */
+const EYES: Record<string, string> = { E: '#ff5a46', F: '#fff0c0', H: '#bfe6ff', Y: '#e8a94a' };
+
+export interface Layer {
+  /** Строки, выровненные по левому краю, начиная с (x, y). */
+  rows?: string[];
+  x?: number;
+  y?: number;
+  /** Половина симметричной фигуры: строки выровнены по центру справа, центр — последний символ. */
+  half?: string[];
+}
+
+export interface SpriteDef {
+  id: string;
+  layers: Layer[];
+  /** Сторона света (откуда ярче): к солнцу посередине сцены. */
+  rim?: 'left' | 'right' | 'top';
+  /** Начиная с этой строки (от верха) край подола колышется. */
+  hem?: number;
+  /** Рваный низ: сколько нижних строк обрывать. */
+  tatter?: number;
+  /** Вес покачивания (в пикселях). */
+  bob?: number;
+  seed?: number;
+}
+
+export interface Sprite {
+  id: string;
+  w: number;
+  h: number;
+  /** Кадры анимации: массив готовых canvas. */
+  frames: HTMLCanvasElement[];
+  blink: HTMLCanvasElement;
+}
+
+const pad = (s: string, n: number, left: boolean) => (left ? s.padStart(n, '.') : s.padEnd(n, '.'));
+
+/** Собирает сетку символов из слоёв. */
+export function compose(def: SpriteDef): string[][] {
+  const grid: Map<string, string> = new Map();
+  let maxX = 0, maxY = 0, minX = 0;
+  const put = (x: number, y: number, ch: string) => {
+    if (ch === '.' || ch === ' ') return;
+    grid.set(`${x},${y}`, ch);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+    minX = Math.min(minX, x);
+  };
+  const halfW = Math.max(...def.layers.flatMap((l) => (l.half ?? []).map((r) => r.length)), 0);
+  const cx = halfW - 1;
+  for (const l of def.layers) {
+    if (l.half) {
+      l.half.forEach((row, i) => {
+        const y = (l.y ?? 0) + i;
+        const left = pad(row, halfW, true);
+        for (let j = 0; j < halfW; j++) {
+          put(j, y, left[j]);
+          if (j < halfW - 1) put(2 * cx - j, y, left[j]);
+        }
+      });
+    }
+    if (l.rows) {
+      l.rows.forEach((row, i) => {
+        for (let j = 0; j < row.length; j++) put((l.x ?? 0) + j, (l.y ?? 0) + i, row[j]);
+      });
+    }
+  }
+  const w = maxX - minX + 1, h = maxY + 1;
+  const out: string[][] = Array.from({ length: h }, () => Array(w).fill('.'));
+  for (const [k, v] of grid) {
+    const [x, y] = k.split(',').map(Number);
+    out[y][x - minX] = v;
+  }
+  // рваный низ
+  if (def.tatter) {
+    const r = new Rng(def.seed ?? 7);
+    for (let t = 0; t < def.tatter; t++) {
+      const y = h - 1 - t;
+      const p = 0.55 - t * (0.5 / def.tatter);
+      for (let x = 0; x < w; x++) if (out[y][x] !== '.' && r.next() < p) out[y][x] = '.';
+    }
+  }
+  return out;
+}
+
+const hex = (h: string) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+
+function renderGrid(g: string[][], def: SpriteDef, frame: number, blinking: boolean): HTMLCanvasElement {
+  const h = g.length, w = g[0].length;
+  const pw = w + 2, ph = h + 4;
+  const c = document.createElement('canvas');
+  c.width = pw;
+  c.height = ph;
+  const ctx = c.getContext('2d')!;
+  const im = ctx.createImageData(pw, ph);
+  const set = (x: number, y: number, col: number[]) => {
+    if (x < 0 || y < 0 || x >= pw || y >= ph) return;
+    const i = (y * pw + x) * 4;
+    im.data[i] = col[0]; im.data[i + 1] = col[1]; im.data[i + 2] = col[2]; im.data[i + 3] = 255;
+  };
+  // покачивание подола
+  const hem = def.hem ?? Math.floor(h * 0.75);
+  const rows: string[][] = g.map((row, y) => {
+    if (y < hem) return row;
+    const amp = (y - hem) / Math.max(1, h - hem);
+    const sh = Math.round(Math.sin(frame * 1.57 + y * 0.45) * 1.4 * amp);
+    if (!sh) return row;
+    const nr = Array(w).fill('.');
+    for (let x = 0; x < w; x++) {
+      const nx = x + sh;
+      if (nx >= 0 && nx < w) nr[nx] = row[x];
+    }
+    return nr;
+  });
+  const bob = frame % 2 === 1 ? 1 : 0;
+  const oy = 2 + bob * (def.bob ?? 1);
+  const at = (x: number, y: number) => (y >= 0 && y < h && x >= 0 && x < w ? rows[y][x] : '.');
+  // контур
+  for (let y = -1; y <= h; y++)
+    for (let x = -1; x <= w; x++) {
+      if (at(x, y) !== '.') continue;
+      if (at(x - 1, y) !== '.' || at(x + 1, y) !== '.' || at(x, y - 1) !== '.' || at(x, y + 1) !== '.') set(x + 1, y + oy, hex(PAL.k));
+    }
+  const rim = def.rim ?? 'right';
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let ch = rows[y][x];
+      if (ch === '.') continue;
+      let col: number[];
+      if (EYES[ch]) col = hex(blinking ? PAL.f : EYES[ch]);
+      else {
+        // мерцание огня
+        if (frame % 2 === 1 && (ch === 'a' || ch === 'A')) ch = ch === 'a' ? 'A' : 'y';
+        // подсветка кромки закатом: тёмные ткани у света превращаются в тёплые
+        const lit = rim === 'right' ? at(x + 1, y) === '.' : rim === 'left' ? at(x - 1, y) === '.' : at(x, y - 1) === '.';
+        const warm: Record<string, string> = { d: 'o', c: 'O', C: 'a', h: 'A', g: 'G', G: 'q', W: 'O', w: 'o', n: 'B', m: 'M', v: 'V', u: 'U' };
+        col = hex(PAL[lit && warm[ch] ? (rim === 'top' ? warm[ch] : warm[ch]) : ch] ?? '#ff00ff');
+        if (lit && warm[ch]) {
+          // не весь край: рассыпаем, чтобы выглядело как свет, а не как обводка
+          if ((x * 7 + y * 13) % 5 === 0) col = hex(PAL[ch]);
+        }
+      }
+      set(x + 1, y + oy, col);
+    }
+  ctx.putImageData(im, 0, 0);
+  return c;
+}
+
+export function makeSprite(def: SpriteDef): Sprite {
+  const g = compose(def);
+  const frames = [0, 1, 2, 3].map((f) => renderGrid(g, def, f, false));
+  const blink = renderGrid(g, def, 0, true);
+  return { id: def.id, w: frames[0].width, h: frames[0].height, frames, blink };
+}
+
+/** Рисует спрайт по нижнему центру. t — время в секундах. */
+export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number, by: number, scale = 1, t = 0, flip = false, phase = 0) {
+  const f = Math.floor((t * 3 + phase) % 4);
+  const blinking = ((t + phase * 0.37) % 4.2) > 4.05;
+  const img = blinking ? s.blink : s.frames[f];
+  ctx.imageSmoothingEnabled = false;
+  const w = s.w * scale, h = s.h * scale;
+  ctx.save();
+  ctx.translate(Math.round(cx), Math.round(by - h));
+  if (flip) {
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(img, 0, 0, w, h);
+  ctx.restore();
+}
+
+/* ───────── генератор тела плаща по профилю ───────── */
+export function cloak(o: { y0: number; y1: number; hw0: number; hw1: number; curve?: number; folds?: number; seed?: number; pal?: string }): string[] {
+  const pal = o.pal ?? 'dcCh';
+  const rows: string[] = [];
+  const n = o.y1 - o.y0 + 1;
+  const r = new Rng(o.seed ?? 3);
+  const fold = Array.from({ length: 6 }, () => r.next() * 6);
+  for (let k = 0; k < n; k++) {
+    const t = k / Math.max(1, n - 1);
+    const hw = Math.round(o.hw0 + (o.hw1 - o.hw0) * Math.pow(t, o.curve ?? 1));
+    let s = '';
+    for (let j = 0; j < hw; j++) {
+      const fromEdge = j; // 0 = край
+      const f = Math.sin((hw - 1 - j) * (o.folds ?? 1.15) + fold[(j + k) % 6] * 0.3 + k * 0.12);
+      let ch: string;
+      if (fromEdge === 0) ch = pal[0];
+      else if (fromEdge === 1) ch = pal[1];
+      else if (j === hw - 1) ch = pal[0];
+      else if (f > 0.55) ch = pal[3 % pal.length];
+      else if (f > -0.1) ch = pal[2];
+      else ch = pal[1];
+      s += ch;
+    }
+    rows.push(s);
+  }
+  return rows;
+}
