@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 const OUT = process.env.OUT || '/tmp/claude-0/shots';
 (async () => {
   const b = await chromium.launch();
-  const ctx = await b.newContext({ viewport: { width: 360, height: 700 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push('PAGEERR ' + e.message));
@@ -19,7 +19,7 @@ const OUT = process.env.OUT || '/tmp/claude-0/shots';
     const res = await p.evaluate(() => {
       const cs = [...document.querySelectorAll('.hand .cw')];
       for (let i = 0; i < cs.length; i++) {
-        const c = cs[i].querySelector('.card');
+        const c = cs[i].querySelector('.pc');
         if (c.className.includes('noafford')) continue;
         const r = cs[i].getBoundingClientRect(); const o = { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 3 };
         cs[i].dispatchEvent(new PointerEvent('pointerdown', o)); cs[i].dispatchEvent(new PointerEvent('pointerup', o));
@@ -32,7 +32,7 @@ const OUT = process.env.OUT || '/tmp/claude-0/shots';
   let hub = false;
   for (let step = 0; step < 400 && !hub; step++) {
     await p.waitForTimeout(350);
-    if (await p.$('.hub-bottom')) { hub = true; break; }
+    if (await p.$('.side')) { hub = true; break; }
     if (await p.$('.sheet .btn.primary')) { await snap('sheet'); await p.click('.sheet .btn.primary').catch(() => {}); continue; }
     if (await p.$('.dialog')) { await snap('dialog'); await p.click('.dialog .dlg-box').catch(() => {}); continue; }
     if (await p.$('.combat')) {

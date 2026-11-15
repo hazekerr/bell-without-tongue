@@ -1,79 +1,116 @@
-import { Combat, HAND_CAP } from '../engine/combat.ts';
+import { Combat } from '../engine/combat.ts';
 import { CARDS } from '../engine/cards.ts';
 import { ENEMIES } from '../engine/enemies.ts';
 import type { CardInst, EnemyInst, GameEvent } from '../engine/types.ts';
 import { cardEl } from './cardview.ts';
 import { audio } from './audio.ts';
-import { enemyArt, sceneArt } from './art.ts';
+import { drawSprite, fogTexture, sceneCanvas, sprite } from '../art/index.ts';
 import { h, sleep, clear } from './dom.ts';
 import { svgIcon, TYPE_ICON, INTENT_ICON, STATUS_NAME, STATUS_HINT } from './icons.ts';
-import { startFx } from './fx.ts';
 import { G } from './state.ts';
+import { stage } from './kit.ts';
 
 export interface CombatUI {
   el: HTMLElement;
-  /** Завершается, когда бой окончен и анимации доиграны. */
   done: Promise<'win' | 'lose'>;
   stop: () => void;
 }
 
-interface View {
-  heroHp: number;
-  heroBlock: number;
-  e: Map<number, { hp: number; block: number; dead: boolean }>;
-}
+interface View { heroHp: number; heroBlock: number; e: Map<number, { hp: number; block: number; dead: boolean }> }
+interface Anim { shake: number; lunge: number; alpha: number }
 
-const HAND_SCALE = 0.54;
+const HAND_SCALE = 0.76;
+const SPRITE_SCALE: Record<string, number> = { tide: 0.72, choirmaster: 0.78, gatekeeper: 0.8, alban: 0.92, reaper: 0.92, seraph: 0.9, fisher: 0.92 };
+const FEET = 154; // нижняя точка спрайтов во внутренних координатах (высота сцены 270)
+const KIND: Record<number, 'c1' | 'c2'> = { 1: 'c1', 2: 'c2', 3: 'c2' };
 
 export function buildCombat(combat: Combat, opts: { circle: number; boss: boolean; onInspect: (title: string, text: string) => void; onPiles: (kind: 'draw' | 'discard' | 'grave' | 'exhaust') => void }): CombatUI {
   const reduce = G.chron.settings.reduceMotion;
-  const bg = h('div', { class: 'bg drift', html: sceneArt(opts.circle >= 2 ? 'c2' : 'c1') });
-  const fx = h('canvas', { class: 'fx' });
+  const SW = stage().clientWidth || 800; // ширина сцены в дизайн-пикселях
+  const IW = Math.round(270 * SW / 390);
+  const K = 390 / 270;
+  const cv = document.createElement('canvas');
+  cv.width = IW; cv.height = 270; cv.className = 'bgc';
+  const bg = sceneCanvas(KIND[opts.circle] ?? 'c2', IW);
+  const fog = fogTexture(IW, 80);
+  const heroId = combat.role === 'wickkeeper' ? 'wickkeeper' : 'gravedigger';
+
   const hintEl = h('div', { class: 'hint' });
-  const arena = h('div', { class: 'arena' });
+  const arena = h('div', { class: 'abs', style: { inset: '0', zIndex: 4 } });
   const handEl = h('div', { class: 'hand' });
-  const chordRow = h('div', { class: 'chord-row' });
-  const heroBar = h('div', { class: 'bar hero' }, h('i', { class: 'ghost' }), h('i'), h('b'));
-  const heroStatuses = h('div', { class: 'statuses' });
-  const heroShield = h('div', { class: 'shield', style: { display: 'none' } });
-  const orbs = h('div', { class: 'breath' });
+  const sigs = h('div', { class: 'sigs' });
+  const orbs = h('div', { class: 'orbs' });
+  const heroHud = h('div', { class: 'herohud' });
   const turnLabel = h('div', { class: 'grow' });
-  const preview = h('div', { class: 'preview' });
-  const hit = h('div', { class: 'vignette-hit' });
-  const pileDraw = h('button', { class: 'pile', 'aria-label': 'Колода' }, h('div', null, 'Колода', h('b')));
-  const pileDis = h('button', { class: 'pile', 'aria-label': 'Сброс' }, h('div', null, 'Сброс', h('b')));
-  const pileGrave = h('button', { class: 'pile', 'aria-label': 'Могила', style: { display: combat.role === 'gravedigger' ? '' : 'none' } }, h('div', null, 'Могила', h('b')));
+  const preview = h('div', { class: 'preview', style: { left: '36%', top: '36px' } });
+  const hit = h('div', { class: 'hitflash' });
+  const pile = (n: string) => h('button', { class: 'pile', 'aria-label': n }, n, h('b', null, '0'));
+  const pileDraw = pile('Колода'), pileDis = pile('Сброс'), pileGrave = pile('Могила');
+  if (combat.role !== 'gravedigger') pileGrave.style.display = 'none';
   const endBtn = h('button', { class: 'end-turn', 'aria-label': 'Конец хода' }, h('div', { html: svgIcon('bell') }), 'Конец хода');
   const sheetHost = h('div');
+  const root = h('div', { class: 'screen combat' }, cv, arena,
+    h('div', { class: 'top' }, pileDraw, pileDis, pileGrave, turnLabel),
+    heroHud, hintEl, h('div', { class: 'leftcol' }, orbs, sigs),
+    h('div', { class: 'hand-zone' }, handEl), endBtn, preview, hit, sheetHost);
 
-  const root = h(
-    'div',
-    { class: 'screen combat' },
-    bg, fx,
-    h(
-      'div',
-      { class: 'layer' },
-      h('div', { class: 'cb-top' }, pileDraw, pileDis, pileGrave, turnLabel),
-      arena,
-      h(
-        'div',
-        { class: 'hero-zone' },
-        h('div', { class: 'hero-line' }, heroBar, heroShield, orbs),
-        heroStatuses,
-        chordRow,
-        hintEl,
-      ),
-      h('div', { class: 'hand-zone' }, handEl),
-      endBtn,
-      preview,
-    ),
-    hit,
-    sheetHost,
-  );
+  /* ───── положение существ ───── */
+  const slots = (n: number) => (n <= 1 ? [0.72] : n === 2 ? [0.6, 0.84] : n === 3 ? [0.5, 0.68, 0.86] : [0.45, 0.59, 0.73, 0.88]);
+  const heroX = 0.17 * IW;
+  const posX = new Map<number, number>();
+  const anim = new Map<number, Anim>();
+  const layout = () => {
+    const living = combat.enemies;
+    const xs = slots(Math.max(1, living.length));
+    living.forEach((e, i) => { if (!posX.has(e.uid)) posX.set(e.uid, xs[i] * IW); anim.set(e.uid, anim.get(e.uid) ?? { shake: 0, lunge: 0, alpha: 1 }); });
+    // перераспределяем, если число врагов изменилось
+    const alive = living.filter((e) => e.alive);
+    const xs2 = slots(Math.max(1, alive.length));
+    alive.forEach((e, i) => posX.set(e.uid, xs2[i] * IW));
+  };
+  const heroAnim: Anim = { shake: 0, lunge: 0, alpha: 1 };
+  const spr = (e: EnemyInst) => sprite(ENEMIES[e.def].art);
+  const sc = (e: EnemyInst) => SPRITE_SCALE[ENEMIES[e.def].art] ?? 1;
 
-  const stopFx = startFx(fx as HTMLCanvasElement, opts.circle >= 2 ? 'ash' : 'rain', reduce);
+  /* ───── рисование арены ───── */
+  const rain = Array.from({ length: reduce ? 0 : 60 }, (_, i) => ({ x: (i * 53) % IW, y: (i * 97) % 270, v: 1.5 + (i % 5) * 0.4 }));
+  let raf = 0;
+  const frame = (ms: number) => {
+    const t = ms / 1000;
+    const x = cv.getContext('2d')!;
+    x.imageSmoothingEnabled = false;
+    x.drawImage(bg, 0, 0);
+    if (!reduce) { x.globalAlpha = 0.6; x.drawImage(fog, -((t * 6) % IW), 118); x.drawImage(fog, IW - ((t * 6) % IW), 118); x.globalAlpha = 1; }
+    // тень под героями
+    x.fillStyle = 'rgba(0,0,0,.4)';
+    const shadow = (cx: number, w: number) => x.fillRect(Math.round(cx - w / 2), FEET - 1, Math.round(w), 4);
+    shadow(heroX, 54);
+    for (const e of combat.enemies) shadow(posX.get(e.uid) ?? 0, 22 + spr(e).w * sc(e) * 0.3);
+    for (const a of [heroAnim, ...anim.values()]) { a.shake *= 0.85; a.lunge *= 0.88; }
+    const ha = heroAnim;
+    drawSprite(x, sprite(heroId), heroX + Math.sin(ha.shake * 6) * ha.shake, FEET + 3, 1, t, false, 0);
+    combat.enemies.forEach((e, i) => {
+      const a = anim.get(e.uid)!;
+      const v = view.e.get(e.uid);
+      if (v?.dead) a.alpha = Math.max(0, a.alpha - 0.025); else a.alpha = 1;
+      if (a.alpha <= 0) return;
+      x.globalAlpha = a.alpha;
+      const ox = (posX.get(e.uid) ?? 0) - a.lunge * 22 + Math.sin(a.shake * 6) * a.shake;
+      drawSprite(x, spr(e), ox, FEET + 3, sc(e), t, false, i + 1);
+      x.globalAlpha = 1;
+    });
+    // дождь или пепел
+    x.fillStyle = opts.circle >= 2 ? 'rgba(210,200,185,.5)' : 'rgba(200,215,225,.4)';
+    for (const r of rain) {
+      r.y += r.v; r.x -= opts.circle >= 2 ? 0.2 : 0.7;
+      if (r.y > 270) { r.y = -4; r.x = Math.random() * IW; }
+      if (r.x < 0) r.x = IW;
+      if (opts.circle >= 2) x.fillRect(Math.floor(r.x), Math.floor(r.y), 1, 1); else x.fillRect(Math.floor(r.x), Math.floor(r.y), 1, 3);
+    }
+    raf = requestAnimationFrame(frame);
+  };
 
-  // ───── вид (отображаемые числа, пока воспроизводятся события) ─────
+  /* ───── вид ───── */
   const view: View = { heroHp: combat.hero.hp, heroBlock: combat.hero.block, e: new Map() };
   const syncView = () => {
     view.heroHp = combat.hero.hp;
@@ -81,6 +118,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     for (const e of combat.enemies) view.e.set(e.uid, { hp: e.hp, block: e.block, dead: !e.alive });
   };
   syncView();
+  layout();
 
   let selUid: number | null = null;
   let busy = false;
@@ -89,16 +127,12 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   const done = new Promise<'win' | 'lose'>((r) => (resolveDone = r));
   const justDrawn = new Set<number>();
 
-  /* ───── отрисовка ───── */
   const statusChips = (st: Record<string, number | undefined>, extra: [string, number][] = []) => {
     const out: HTMLElement[] = [];
     for (const [k, v] of [...Object.entries(st), ...extra]) {
       if (!v) continue;
       const chip = h('button', { class: `st ${k}`, 'aria-label': `${STATUS_NAME[k]} ${v}` }, h('i'), `${STATUS_NAME[k]} ${v}`);
-      chip.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        opts.onInspect(STATUS_NAME[k], STATUS_HINT[k]);
-      });
+      chip.addEventListener('click', (ev) => { ev.stopPropagation(); opts.onInspect(STATUS_NAME[k], STATUS_HINT[k]); });
       out.push(chip);
     }
     return out;
@@ -107,45 +141,37 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   const intentChip = (e: EnemyInst) => {
     const m = e.intent;
     let label = m.name;
-    let kind = m.kind;
     if (m.kind === 'attack' && m.dmg !== undefined) {
       const dmg = combat.enemyDamage(e, m.dmg);
       label = (m.hits ?? 1) > 1 ? `${dmg}×${m.hits}` : `${dmg}`;
     } else if (m.kind === 'defend') label = m.block ? `${m.block}` : m.blockAll ? `${m.blockAll}+` : m.name;
-    else if (m.kind === 'unknown') label = m.name;
-    return h('div', { class: `intent ${kind}`, title: m.name, html: `${svgIcon(INTENT_ICON[kind] ?? 'eye', kind === 'attack' || kind === 'defend' ? '' : 'i')}<span>${label}</span>` });
+    const cls = m.kind === 'attack' ? '' : m.kind === 'defend' ? 'defend' : 'other';
+    return h('div', { class: `intent ${cls}`, title: m.name, html: `${svgIcon(INTENT_ICON[m.kind] ?? 'eye')}<span>${label}</span>` });
   };
 
   const needsTarget = (uid: number) => combat.needsTarget(uid);
+  const dx = (ix: number) => ix * K;
 
   const renderEnemies = () => {
     clear(arena);
-    const alive = combat.enemies.filter((e) => e.alive || view.e.get(e.uid)?.dead === false);
-    const solo = alive.length <= 1;
     const selDef = selUid !== null ? combat.hand.find((c) => c.uid === selUid) : undefined;
     const targeting = !!selDef && needsTarget(selDef.uid);
     for (const e of combat.enemies) {
       const v = view.e.get(e.uid) ?? { hp: e.hp, block: e.block, dead: !e.alive };
       const def = ENEMIES[e.def];
-      const tile = h(
-        'div',
-        { class: ['enemy', solo ? 'solo' : '', v.dead ? 'dead' : 'idle', targeting && !v.dead ? 'targetable' : ''].filter(Boolean).join(' '), dataset: { uid: e.uid }, tabindex: 0, role: 'button', 'aria-label': `${def.name}, ${v.hp} из ${e.maxHp}` },
-        v.dead ? null : intentChip(e),
-        h('div', { class: 'portrait', html: enemyArt(def.art) }),
-        h('div', { class: 'ename' }, def.name),
-        h(
-          'div',
-          { class: 'ebar' },
-          h('div', { class: 'bar' }, h('i', { style: { width: `${(Math.max(0, v.hp) / e.maxHp) * 100}%` } }), h('b', null, `${Math.max(0, v.hp)} / ${e.maxHp}`)),
-        ),
-        v.block > 0 ? h('div', { class: 'eblock' }, h('div', { class: 'shield', html: `${svgIcon('shield')}${v.block}` })) : null,
-        h('div', { class: 'statuses' }, statusChips(e.statuses as Record<string, number>, e.strength ? [['toll', 0]] : [])),
+      const s = spr(e), scl = sc(e);
+      const w = s.w * scl * K, hh = s.h * scl * K;
+      const feetY = FEET * K;
+      const tile = h('div', { class: `en${v.dead ? ' dead' : ''}${targeting && !v.dead ? ' targetable' : ''}`, dataset: { uid: e.uid }, tabindex: 0, role: 'button', 'aria-label': `${def.name}, ${v.hp} из ${e.maxHp}`, style: { left: `${dx(posX.get(e.uid) ?? 0)}px`, top: `${feetY - hh - 4}px`, width: `${w}px`, height: `${hh + 28}px` } },
+        h('div', { class: 'tg' }),
+        v.dead ? null : (() => { const c = intentChip(e); c.style.top = '-24px'; return c; })(),
+        h('div', { class: 'info', style: { top: `${hh + 6}px` } },
+          h('div', { class: 'ename' }, def.name),
+          h('div', { class: 'bar' }, h('i', { style: { width: `${(Math.max(0, v.hp) / e.maxHp) * 100}%` } }), h('b', null, `${Math.max(0, v.hp)}/${e.maxHp}`)),
+          h('div', { class: 'row2', style: { display: 'flex', gap: '3px', alignItems: 'center' } }, v.block > 0 ? h('div', { class: 'shield', html: `${svgIcon('shield')}${v.block}` }) : null, h('div', { class: 'statuses' }, statusChips(e.statuses as Record<string, number>)))),
       );
       tile.addEventListener('click', () => onEnemyTap(e.uid));
-      tile.addEventListener('contextmenu', (ev) => {
-        ev.preventDefault();
-        opts.onInspect(def.name, def.blurb);
-      });
+      tile.addEventListener('contextmenu', (ev) => { ev.preventDefault(); opts.onInspect(def.name, def.blurb); });
       let pressT: number | undefined;
       tile.addEventListener('pointerdown', () => (pressT = window.setTimeout(() => opts.onInspect(def.name, def.blurb + '\n\n' + `Намерение: ${e.intent.name}${e.intent.text ? ' — ' + e.intent.text : ''}`), 520)));
       tile.addEventListener('pointerup', () => clearTimeout(pressT));
@@ -156,27 +182,21 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
 
   const renderHero = () => {
     const hp = Math.max(0, view.heroHp);
-    const [ghost, fill, label] = heroBar.children as unknown as HTMLElement[];
-    fill.style.width = `${(hp / combat.hero.maxHp) * 100}%`;
-    ghost.style.width = `${(hp / combat.hero.maxHp) * 100}%`;
-    label.textContent = `${hp} / ${combat.hero.maxHp}`;
-    heroShield.style.display = view.heroBlock > 0 ? '' : 'none';
-    heroShield.innerHTML = `${svgIcon('shield')}${view.heroBlock}`;
-    clear(heroStatuses);
-    const ex: [string, number][] = [];
-    if (combat.hero.flame) ex.push(['flame', combat.hero.flame]);
-    if (combat.role === 'bellringer') ex.push(['toll', combat.hero.toll]);
-    heroStatuses.append(...statusChips(combat.hero.statuses as Record<string, number>, ex));
+    clear(heroHud);
+    heroHud.style.left = `${dx(heroX)}px`;
+    heroHud.style.top = `${FEET * K + 6}px`;
+    heroHud.append(
+      h('div', { class: 'bar hero' }, h('i', { style: { width: `${(hp / combat.hero.maxHp) * 100}%` } }), h('b', null, `${hp} / ${combat.hero.maxHp}`)),
+      h('div', { class: 'row2' }, view.heroBlock > 0 ? h('div', { class: 'shield', html: `${svgIcon('shield')}${view.heroBlock}` }) : null,
+        h('div', { class: 'statuses' }, statusChips(combat.hero.statuses as Record<string, number>, [...(combat.hero.flame ? [['flame', combat.hero.flame] as [string, number]] : []), ...(combat.role === 'bellringer' ? [['toll', combat.hero.toll] as [string, number]] : [])]))),
+    );
     const total = Math.max(3, combat.breath);
     clear(orbs);
     for (let i = 0; i < total; i++) orbs.append(h('div', { class: `orb${i < combat.breath ? '' : ' off'}` }));
-    // аккорд
-    clear(chordRow);
+    clear(sigs);
     const full = combat.typesPlayed.size >= 3;
-    chordRow.className = `chord-row${full ? ' full' : ''}`;
-    for (const t of ['strike', 'ward', 'rite'] as const)
-      chordRow.append(h('div', { class: `sig ${t}${combat.typesPlayed.has(t) ? ' on' : ''}`, html: svgIcon(TYPE_ICON[t]), title: t }));
-    chordRow.append(h('div', { class: 'chord-label' }, 'Аккорд'));
+    sigs.className = `sigs${full ? ' full' : ''}`;
+    for (const t of ['strike', 'ward', 'rite'] as const) sigs.append(h('div', { class: `sig ${t}${combat.typesPlayed.has(t) ? ' on' : ''}`, html: svgIcon(TYPE_ICON[t]) }));
     turnLabel.textContent = `Ход ${combat.turn}`;
     (pileDraw.querySelector('b') as HTMLElement).textContent = String(combat.drawPile.length);
     (pileDis.querySelector('b') as HTMLElement).textContent = String(combat.discard.length);
@@ -188,39 +208,31 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
 
   const handLayout = () => {
     const n = combat.hand.length;
-    const W = Math.max(280, (root.clientWidth || 412) - 14);
-    const scale = Math.max(0.42, Math.min(HAND_SCALE, W / (220 * (1 + 0.6 * (Math.min(Math.max(n, 1), 5) - 1)))));
-    const cw = 220 * scale;
-    const step = n <= 1 ? 0 : Math.min(cw * 0.8, (W - cw) / (n - 1));
-    return { n, cw, step, scale };
+    const area = Math.max(200, SW - 156);
+    const cw = 120 * HAND_SCALE;
+    const step = n <= 1 ? 0 : Math.min(cw * 0.84, (area - cw) / (n - 1));
+    return { n, cw, step, area };
   };
 
   const renderHand = () => {
     clear(handEl);
-    const { n, cw, step, scale } = handLayout();
+    const { n, cw, step, area } = handLayout();
+    const x0 = (area - (step * (n - 1) + cw)) / 2;
     combat.hand.forEach((c, i) => {
       const mid = (n - 1) / 2;
       const off = i - mid;
       const can = combat.canPlay(c.uid);
       const d = CARDS[c.id];
-      const el = cardEl(c.id, {
-        up: c.up, scale, costNow: combat.cost(c), returned: c.returned, noafford: !can && !d.unplayable && d.type !== 'debt', unplayable: !!d.unplayable,
-      });
-      const x = (i - mid) * step - cw / 2;
-      const y = Math.abs(off) * Math.abs(off) * 2.2;
-      const rot = off * (n > 6 ? 2.6 : 3.6);
-      el.dataset.uid = String(c.uid);
-      el.style.left = `calc(50% + ${x}px)`;
+      const el = cardEl(c.id, { up: c.up, scale: HAND_SCALE, costNow: combat.cost(c), returned: c.returned, noafford: !can && !d.unplayable && d.type !== 'debt', unplayable: !!d.unplayable });
+      el.style.left = `${x0 + i * step}px`;
       el.style.zIndex = String(10 + i);
-      el.style.transform = `translateY(${y}px) rotate(${rot}deg)`;
-      el.dataset.base = el.style.transform;
+      const y = Math.abs(off) * Math.abs(off) * 1.4;
+      el.style.transform = `translateY(${y}px) rotate(${off * (n > 6 ? 1.8 : 2.4)}deg)`;
+      el.dataset.uid = String(c.uid);
       if (justDrawn.has(c.uid) && !reduce) {
-        el.animate([{ transform: `translate(-60px, 90px) rotate(-20deg) scale(.6)`, opacity: 0 }, { transform: el.style.transform, opacity: 1 }], { duration: 360, delay: 40 * [...justDrawn].indexOf(c.uid), easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
+        el.animate([{ transform: `translate(-80px, 60px) rotate(-20deg) scale(.6)`, opacity: 0 }, { transform: el.style.transform, opacity: 1 }], { duration: 340, delay: 40 * [...justDrawn].indexOf(c.uid), easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
       }
-      if (c.uid === selUid) {
-        el.classList.add('sel');
-        el.style.transform = `translateY(-34px) scale(1.12)`;
-      }
+      if (c.uid === selUid) { el.classList.add('sel'); el.style.transform = `translateY(-28px) scale(1.06)`; }
       attachCardInput(el, c);
       handEl.append(el);
     });
@@ -231,45 +243,33 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   const renderPreview = () => {
     clear(preview);
     const c = selUid !== null ? combat.hand.find((x) => x.uid === selUid) : undefined;
-    if (!c) {
-      hintEl.textContent = combat.phase === 'hero' ? 'Нажми карту. Разные типы за ход собирают Аккорд.' : '';
-      return;
-    }
-    const big = cardEl(c.id, { up: c.up, scale: 0.95, costNow: combat.cost(c), returned: c.returned });
-    preview.append(big);
+    if (!c) { hintEl.textContent = combat.phase === 'hero' ? 'Нажми карту. Разные типы за ход собирают Аккорд.' : ''; return; }
+    preview.append(cardEl(c.id, { up: c.up, scale: 1.5, costNow: combat.cost(c), returned: c.returned, flavor: true }));
     const d = CARDS[c.id];
     hintEl.textContent = !combat.canPlay(c.uid)
       ? d.unplayable ? 'Эту карту нельзя сыграть.' : 'Не хватает Дыхания.'
-      : needsTarget(c.uid) ? 'Выбери цель.' : d.target === 'enemy' ? 'Нажми ещё раз или потяни вверх — сыграть.' : 'Нажми ещё раз или потяни вверх — сыграть.';
+      : needsTarget(c.uid) ? 'Выбери цель: нажми на врага.' : 'Нажми ещё раз или потяни вверх, чтобы сыграть.';
   };
 
-  const renderAll = () => {
-    renderEnemies();
-    renderHero();
-    renderHand();
-  };
+  const renderAll = () => { renderEnemies(); renderHero(); renderHand(); };
 
   /* ───── ввод ───── */
+  const toDesign = (clientX: number, clientY: number) => { const r = stage().getBoundingClientRect(); const s = r.width / SW; return { x: (clientX - r.left) / s, y: (clientY - r.top) / s }; };
   function attachCardInput(el: HTMLElement, c: CardInst) {
     let sx = 0, sy = 0, dragging = false, pid = -1;
     el.addEventListener('pointerdown', (ev) => {
       if (busy) return;
       sx = ev.clientX; sy = ev.clientY; dragging = false; pid = ev.pointerId;
-      try { el.setPointerCapture(pid); } catch { /* синтетические события */ }
+      try { el.setPointerCapture(pid); } catch { /* */ }
     });
     el.addEventListener('pointermove', (ev) => {
       if (pid !== ev.pointerId || busy) return;
-      const dx = ev.clientX - sx, dy = ev.clientY - sy;
-      if (!dragging && Math.hypot(dx, dy) > 12) {
-        dragging = true;
-        el.style.transition = 'none';
-        el.style.zIndex = '90';
-        if (selUid !== c.uid) { selUid = c.uid; }
-      }
+      const dx2 = ev.clientX - sx, dy2 = ev.clientY - sy;
+      if (!dragging && Math.hypot(dx2, dy2) > 12) { dragging = true; el.style.transition = 'none'; el.style.zIndex = '90'; selUid = c.uid; }
       if (dragging) {
-        el.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx * 0.04}deg) scale(1.08)`;
-        const t = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.enemy');
-        arena.querySelectorAll('.enemy').forEach((x) => x.classList.toggle('targetable', x === t));
+        el.style.transform = `translate(${dx2}px, ${dy2}px) rotate(${dx2 * 0.03}deg) scale(1.05)`;
+        const t = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.en');
+        arena.querySelectorAll('.en').forEach((x) => x.classList.toggle('targetable', x === t));
       }
     });
     const end = (ev: PointerEvent) => {
@@ -279,15 +279,10 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
       el.style.transition = '';
       if (busy) return;
       if (dragging) {
-        const dy = ev.clientY - sy;
-        const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.enemy') as HTMLElement | null;
-        if (dy < -70) {
-          const uid = under ? Number(under.dataset.uid) : undefined;
-          void tryPlay(c.uid, uid);
-        } else {
-          selUid = null;
-          renderAll();
-        }
+        const dy2 = ev.clientY - sy;
+        const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.en') as HTMLElement | null;
+        if (dy2 < -50) void tryPlay(c.uid, under ? Number(under.dataset.uid) : undefined);
+        else { selUid = null; renderAll(); }
         return;
       }
       void onCardTap(c.uid);
@@ -302,13 +297,8 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
       if (!combat.canPlay(uid)) { audio.sfx('deny'); return; }
       if (needsTarget(uid)) { audio.sfx('deny'); hintEl.textContent = 'Выбери цель: нажми на врага.'; return; }
       await tryPlay(uid);
-    } else {
-      selUid = uid;
-      audio.sfx('card_up');
-      renderAll();
-    }
+    } else { selUid = uid; audio.sfx('card_up'); renderAll(); }
   }
-
   async function onEnemyTap(enemyUid: number) {
     if (busy) return;
     if (selUid !== null && combat.canPlay(selUid)) await tryPlay(selUid, enemyUid);
@@ -317,39 +307,28 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   async function tryPlay(uid: number, target?: number) {
     if (busy || finished) return;
     if (!combat.canPlay(uid)) { audio.sfx('deny'); selUid = null; renderAll(); return; }
-    if (needsTarget(uid) && target === undefined) {
-      selUid = uid;
-      renderAll();
-      hintEl.textContent = 'Выбери цель: нажми на врага.';
-      return;
-    }
+    if (needsTarget(uid) && target === undefined) { selUid = uid; renderAll(); hintEl.textContent = 'Выбери цель: нажми на врага.'; return; }
     busy = true;
     const c = combat.hand.find((x) => x.uid === uid)!;
     const d = CARDS[c.id];
-    // «полёт» карты
     const src = handEl.querySelector(`[data-uid="${uid}"]`) as HTMLElement | null;
     if (src && !reduce) {
-      const r = src.getBoundingClientRect();
+      const r = src.getBoundingClientRect(), st = stage().getBoundingClientRect(), s = st.width / SW;
       const fly = cardEl(c.id, { up: c.up, scale: HAND_SCALE, costNow: combat.cost(c) });
-      const st = root.getBoundingClientRect();
-      Object.assign(fly.style, { position: 'absolute', left: `${r.left - st.left}px`, top: `${r.top - st.top}px`, zIndex: '70', pointerEvents: 'none' });
+      Object.assign(fly.style, { position: 'absolute', left: `${(r.left - st.left) / s}px`, top: `${(r.top - st.top) / s}px`, zIndex: '70', pointerEvents: 'none' });
       root.append(fly);
-      fly.animate([{ transform: 'translateY(0) scale(1)', opacity: 1 }, { transform: 'translateY(-170px) scale(1.18)', opacity: 0 }], { duration: 420, easing: 'cubic-bezier(.3,.7,.3,1)' }).finished.then(() => fly.remove());
+      fly.animate([{ transform: 'translateY(0) scale(1)', opacity: 1 }, { transform: 'translateY(-120px) scale(1.2)', opacity: 0 }], { duration: 400, easing: 'cubic-bezier(.3,.7,.3,1)' }).finished.then(() => fly.remove());
     }
     selUid = null;
     const before = combat.events.length;
-    const hadChord = combat.chordDone;
-    try {
-      combat.play(uid, target);
-    } catch (err) {
-      console.error(err);
-    }
+    try { combat.play(uid, target); } catch (err) { console.error(err); }
     const evs = combat.events.slice(before);
     audio.sfx(d.type === 'strike' ? 'strike' : d.type === 'ward' ? 'ward' : 'rite');
+    if (d.type === 'strike') heroAnim.lunge = -1.2;
     await replay(evs, 70);
-    if (!hadChord && combat.chordDone) { /* визуал в replay */ }
     busy = false;
     syncView();
+    layout();
     renderAll();
     if (combat.pending) await chooseExhume();
     checkEnd();
@@ -363,26 +342,21 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     await new Promise<void>((res) => {
       const grid = h('div', { class: 'grid-cards' });
       const btn = h('button', { class: 'btn primary', disabled: true }, 'Вернуть');
-      const body = h('div', { class: 'body' }, h('h2', { class: 'title' }, 'Эксгумация'), h('p', { class: 'sub' }, `Выбери карт: ${p.count}. ${p.free ? 'В этот ход она бесплатна.' : ''}`), h('div', { style: { height: '10px' } }), grid, h('div', { style: { height: '12px' } }), btn);
+      const body = h('div', { class: 'body wide' }, h('div', { class: 'row', style: { alignItems: 'center' } }, h('h2', { class: 'title-l', style: { flex: 3 } }, `Эксгумация: выбери ${p.count}`), btn), grid);
       const sheet = h('div', { class: 'sheet' }, body);
       for (const uid of p.options) {
         const c = combat.grave.find((x) => x.uid === uid)!;
-        const el = cardEl(c.id, { up: c.up, scale: 0.42 });
+        const el = cardEl(c.id, { up: c.up, scale: 0.7 });
         el.style.cursor = 'pointer';
         el.addEventListener('click', () => {
           const i = picked.indexOf(uid);
-          if (i >= 0) { picked.splice(i, 1); el.style.outline = ''; }
-          else if (picked.length < p.count) { picked.push(uid); el.style.outline = '2px solid #e8a94a'; }
+          if (i >= 0) { picked.splice(i, 1); el.style.outline = ''; } else if (picked.length < p.count) { picked.push(uid); el.style.outline = '2px solid #e8a94a'; }
           (btn as HTMLButtonElement).disabled = picked.length !== p.count;
           audio.sfx('card_up');
         });
         grid.append(el);
       }
-      btn.addEventListener('click', () => {
-        combat.choose_exhume(picked);
-        sheet.remove();
-        res();
-      });
+      btn.addEventListener('click', () => { combat.choose_exhume(picked); sheet.remove(); res(); });
       sheetHost.append(sheet);
     });
     audio.sfx('exhume');
@@ -393,34 +367,21 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
 
   /* ───── воспроизведение событий ───── */
   const posOf = (uid: number | 'hero') => {
-    const st = root.getBoundingClientRect();
-    if (uid === 'hero') {
-      const r = heroBar.getBoundingClientRect();
-      return { x: r.left - st.left + r.width / 2, y: r.top - st.top - 10 };
-    }
-    const el = arena.querySelector(`[data-uid="${uid}"] .portrait`) as HTMLElement | null;
-    if (!el) return { x: st.width / 2, y: st.height * 0.3 };
-    const r = el.getBoundingClientRect();
-    return { x: r.left - st.left + r.width / 2, y: r.top - st.top + r.height * 0.4 };
+    if (uid === 'hero') return { x: dx(heroX), y: FEET * K - 90 };
+    const e = combat.enemies.find((q) => q.uid === uid);
+    const hh = e ? spr(e).h * sc(e) * K : 100;
+    return { x: dx(posX.get(uid) ?? 0), y: FEET * K - hh * 0.6 };
   };
   const floatText = (uid: number | 'hero', text: string, cls = '') => {
     const p = posOf(uid);
-    const f = h('div', { class: `float ${cls}`, style: { left: `${p.x + (Math.random() - 0.5) * 24}px`, top: `${p.y}px` } }, text);
+    const f = h('div', { class: `float ${cls}`, style: { left: `${p.x + (Math.random() - 0.5) * 20}px`, top: `${p.y}px` } }, text);
     root.append(f);
-    setTimeout(() => f.remove(), 1250);
+    setTimeout(() => f.remove(), 1200);
   };
-  const shake = (uid: number | 'hero', cls = 'hit') => {
-    if (uid === 'hero') {
-      hit.classList.remove('on');
-      void hit.offsetWidth;
-      hit.classList.add('on');
-      if (!reduce) root.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-6px,3px)' }, { transform: 'translate(5px,-2px)' }, { transform: 'translate(0,0)' }], { duration: 260 });
-      return;
-    }
-    const el = arena.querySelector(`[data-uid="${uid}"]`);
-    el?.classList.remove('hit', 'act');
-    void (el as HTMLElement | null)?.offsetWidth;
-    el?.classList.add(cls);
+  const shake = (uid: number | 'hero', kind: 'hit' | 'act' = 'hit') => {
+    if (uid === 'hero') { heroAnim.shake = 6; hit.classList.remove('on'); void hit.offsetWidth; hit.classList.add('on'); return; }
+    const a = anim.get(uid);
+    if (a) { if (kind === 'hit') a.shake = 6; else a.lunge = 1; }
   };
 
   async function replay(evs: GameEvent[], gap: number) {
@@ -431,68 +392,38 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
           if (tgt === 'hero') {
             view.heroBlock = Math.max(0, view.heroBlock - e.blocked);
             view.heroHp = Math.max(0, view.heroHp - e.amount);
-            if (e.amount > 0) { floatText('hero', `−${e.amount}`, 'hurt'); shake('hero'); audio.sfx('hurt'); }
-            else { floatText('hero', 'блок', 'block'); audio.sfx('block'); }
+            if (e.amount > 0) { floatText('hero', `−${e.amount}`, 'hurt'); shake('hero'); audio.sfx('hurt'); } else { floatText('hero', 'блок', 'block'); audio.sfx('block'); }
           } else {
             const v = view.e.get(tgt);
             if (v) { v.block = Math.max(0, v.block - e.blocked); v.hp = Math.max(0, v.hp - e.amount); }
-            if (e.amount > 0) { floatText(tgt, `${e.amount}`); shake(tgt); audio.sfx('hit'); }
-            else { floatText(tgt, 'блок', 'block'); audio.sfx('block'); }
+            if (e.amount > 0) { floatText(tgt, `${e.amount}`); shake(tgt); audio.sfx('hit'); } else { floatText(tgt, 'блок', 'block'); audio.sfx('block'); }
           }
           renderEnemies(); renderHeroLite();
           await sleep(gap * 1.4);
           break;
         }
         case 'block': {
-          if (e.target === 'hero') { view.heroBlock += e.amount; floatText('hero', `+${e.amount}`, 'block'); }
-          else { const v = view.e.get(e.target); if (v) v.block += e.amount; }
-          audio.sfx('block');
-          renderEnemies(); renderHeroLite();
-          await sleep(gap);
-          break;
+          if (e.target === 'hero') { view.heroBlock += e.amount; floatText('hero', `+${e.amount}`, 'block'); } else { const v = view.e.get(e.target); if (v) v.block += e.amount; }
+          audio.sfx('block'); renderEnemies(); renderHeroLite(); await sleep(gap); break;
         }
         case 'heal': {
-          if (e.target === 'hero') { view.heroHp = Math.min(combat.hero.maxHp, view.heroHp + e.amount); floatText('hero', `+${e.amount}`, 'heal'); }
-          else { const v = view.e.get(e.target); if (v) v.hp += e.amount; floatText(e.target, `+${e.amount}`, 'heal'); }
-          audio.sfx('heal');
-          renderEnemies(); renderHeroLite();
-          await sleep(gap);
-          break;
+          if (e.target === 'hero') { view.heroHp = Math.min(combat.hero.maxHp, view.heroHp + e.amount); floatText('hero', `+${e.amount}`, 'heal'); } else { const v = view.e.get(e.target); if (v) v.hp += e.amount; floatText(e.target, `+${e.amount}`, 'heal'); }
+          audio.sfx('heal'); renderEnemies(); renderHeroLite(); await sleep(gap); break;
         }
-        case 'status': {
-          floatText(e.target, `${STATUS_NAME[e.status]} ${e.n}`, 'status');
-          await sleep(gap * 0.6);
-          break;
-        }
-        case 'death': {
-          const v = view.e.get(e.enemy);
-          if (v) v.dead = true;
-          audio.sfx('kill');
-          renderEnemies();
-          await sleep(gap * 4);
-          break;
-        }
-        case 'act': {
-          shake(e.enemy, 'act');
-          await sleep(240);
-          break;
-        }
+        case 'status': floatText(e.target, `${STATUS_NAME[e.status]} ${e.n}`, 'status'); await sleep(gap * 0.6); break;
+        case 'death': { const v = view.e.get(e.enemy); if (v) v.dead = true; audio.sfx('kill'); renderEnemies(); await sleep(gap * 4); break; }
+        case 'act': shake(e.enemy, 'act'); await sleep(260); break;
         case 'chord': {
           audio.sfx('chord');
-          const st = root.getBoundingClientRect();
-          const r = chordRow.getBoundingClientRect();
-          const ring = h('div', { class: 'ring', style: { left: `${r.left - st.left + r.width / 2}px`, top: `${r.top - st.top + r.height / 2}px`, width: '90px', height: '90px' } });
-          root.append(ring);
-          setTimeout(() => ring.remove(), 1200);
-          chordRow.classList.add('full');
-          await sleep(gap * 5);
-          break;
+          const r = sigs.getBoundingClientRect(), st = stage().getBoundingClientRect(), s = st.width / SW;
+          const ring = h('div', { class: 'ring', style: { left: `${(r.left - st.left + r.width / 2) / s}px`, top: `${(r.top - st.top + r.height / 2) / s}px`, width: '50px', height: '50px' } });
+          root.append(ring); setTimeout(() => ring.remove(), 1100);
+          sigs.classList.add('full'); await sleep(gap * 5); break;
         }
         case 'toll': audio.sfx('toll'); await sleep(gap * 3); break;
         case 'bury': audio.sfx('bury'); await sleep(gap * 0.5); break;
         case 'draw': justDrawn.add(e.card.uid); break;
         case 'summon': await sleep(gap); break;
-        case 'turn': break;
         default: break;
       }
     }
@@ -500,108 +431,73 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
 
   const renderHeroLite = () => {
     const hp = Math.max(0, view.heroHp);
-    const [ghost, fill, label] = heroBar.children as unknown as HTMLElement[];
-    fill.style.width = `${(hp / combat.hero.maxHp) * 100}%`;
-    ghost.style.width = `${(Math.max(hp, 0) / combat.hero.maxHp) * 100}%`;
-    label.textContent = `${hp} / ${combat.hero.maxHp}`;
-    heroShield.style.display = view.heroBlock > 0 ? '' : 'none';
-    heroShield.innerHTML = `${svgIcon('shield')}${view.heroBlock}`;
+    const bar = heroHud.querySelector('.bar.hero');
+    if (bar) { (bar.children[0] as HTMLElement).style.width = `${(hp / combat.hero.maxHp) * 100}%`; (bar.children[1] as HTMLElement).textContent = `${hp} / ${combat.hero.maxHp}`; }
   };
 
   function checkEnd() {
     if (finished || !combat.result) return;
-    finished = true;
-    busy = true;
+    finished = true; busy = true;
     const res = combat.result;
     setTimeout(() => resolveDone(res), res === 'win' ? 900 : 1300);
   }
 
+  function rewindView(evs: GameEvent[]) {
+    for (let i = evs.length - 1; i >= 0; i--) {
+      const e = evs[i];
+      if (e.t === 'damage') {
+        if (e.target === 'hero') { view.heroHp += e.amount; view.heroBlock += e.blocked; } else { const v = view.e.get(e.target) ?? { hp: 0, block: 0, dead: false }; v.hp += e.amount; v.block += e.blocked; view.e.set(e.target, v); }
+      } else if (e.t === 'block') {
+        if (e.target === 'hero') view.heroBlock -= e.amount; else { const v = view.e.get(e.target); if (v) v.block -= e.amount; }
+      } else if (e.t === 'heal') {
+        if (e.target === 'hero') view.heroHp -= e.amount; else { const v = view.e.get(e.target); if (v) v.hp -= e.amount; }
+      } else if (e.t === 'death') { const v = view.e.get(e.enemy); if (v) v.dead = false; }
+    }
+    view.heroHp = Math.max(0, Math.min(combat.hero.maxHp, view.heroHp));
+    view.heroBlock = Math.max(0, view.heroBlock);
+  }
+
   async function endTurn() {
     audio.unlock();
-    if (busy || finished || combat.phase !== 'hero') return;
-    if (combat.pending) return;
-    busy = true;
-    selUid = null;
-    const hadCards = combat.hand.some((c) => combat.canPlay(c.uid));
-    void hadCards;
-    renderPreview();
+    if (busy || finished || combat.phase !== 'hero' || combat.pending) return;
+    busy = true; selUid = null; renderPreview();
     const before = combat.events.length;
-    // фиксируем «до» для плавных чисел
     syncView();
     combat.endTurn();
     const evs = combat.events.slice(before);
     audio.sfx('turn');
-    // показать ход врагов
-    const banner = h('div', { class: 'turn-banner', style: { color: '#e08a70' } }, 'Ход врагов');
-    root.append(banner);
-    setTimeout(() => banner.remove(), 1500);
-    // для воспроизведения вернём отображаемые значения «до хода врагов»
+    const banner = h('div', { class: 'banner', style: { color: '#e08a70' } }, 'ХОД ВРАГОВ');
+    root.append(banner); setTimeout(() => banner.remove(), 1400);
     rewindView(evs);
+    layout();
     renderAll();
     await sleep(380);
     await replay(evs.filter((e) => e.t !== 'draw' && e.t !== 'turn'), 120);
     busy = false;
     syncView();
-    // добор нового хода
     for (const e of evs) if (e.t === 'draw') justDrawn.add(e.card.uid);
+    layout();
     renderAll();
     checkEnd();
-    if (!combat.result) {
-      const b2 = h('div', { class: 'turn-banner', style: { color: 'var(--candle)' } }, 'Твой ход');
-      root.append(b2);
-      setTimeout(() => b2.remove(), 1500);
-    }
-  }
-
-  /** Возвращает отображаемые числа к состоянию до событий, чтобы анимировать урон по шагам. */
-  function rewindView(evs: GameEvent[]) {
-    // Идём по событиям в обратном порядке и откатываем эффекты damage/block/heal.
-    for (let i = evs.length - 1; i >= 0; i--) {
-      const e = evs[i];
-      if (e.t === 'damage') {
-        if (e.target === 'hero') { view.heroHp += e.amount; view.heroBlock += e.blocked; }
-        else { const v = view.e.get(e.target) ?? { hp: 0, block: 0, dead: false }; v.hp += e.amount; v.block += e.blocked; view.e.set(e.target, v); }
-      } else if (e.t === 'block') {
-        if (e.target === 'hero') view.heroBlock -= e.amount;
-        else { const v = view.e.get(e.target); if (v) v.block -= e.amount; }
-      } else if (e.t === 'heal') {
-        if (e.target === 'hero') view.heroHp -= e.amount;
-        else { const v = view.e.get(e.target); if (v) v.hp -= e.amount; }
-      } else if (e.t === 'death') {
-        const v = view.e.get(e.enemy);
-        if (v) v.dead = false;
-      }
-    }
-    // Броня героя сбрасывается в начале его хода, а блок врагов в начале их хода — исправим ориентир.
-    view.heroHp = Math.max(0, Math.min(combat.hero.maxHp, view.heroHp));
-    view.heroBlock = Math.max(0, view.heroBlock);
+    if (!combat.result) { const b2 = h('div', { class: 'banner', style: { color: 'var(--amber)' } }, 'ТВОЙ ХОД'); root.append(b2); setTimeout(() => b2.remove(), 1400); }
   }
 
   endBtn.addEventListener('click', () => void endTurn());
-  const openPile = (kind: 'draw' | 'discard' | 'grave') => opts.onPiles(kind);
-  pileDraw.addEventListener('click', () => openPile('draw'));
-  pileDis.addEventListener('click', () => openPile('discard'));
-  pileGrave.addEventListener('click', () => openPile('grave'));
+  pileDraw.addEventListener('click', () => opts.onPiles('draw'));
+  pileDis.addEventListener('click', () => opts.onPiles('discard'));
+  pileGrave.addEventListener('click', () => opts.onPiles('grave'));
   root.addEventListener('click', (ev) => {
     if (busy) return;
     const t = ev.target as HTMLElement;
-    if (selUid !== null && !t.closest('.cw') && !t.closest('.enemy') && !t.closest('button')) {
-      selUid = null;
-      renderAll();
-    }
+    if (selUid !== null && !t.closest('.cw') && !t.closest('.en') && !t.closest('button')) { selUid = null; renderAll(); }
   });
 
-  syncView();
-  // Добор первого хода показываем сразу
   for (const c of combat.hand) justDrawn.add(c.uid);
-  queueMicrotask(() => renderAll());
+  queueMicrotask(() => { renderAll(); raf = requestAnimationFrame(frame); });
   setTimeout(() => {
-    const b = h('div', { class: 'turn-banner', style: { color: opts.boss ? '#ff8a6a' : 'var(--candle)' } }, opts.boss ? 'Страж Круга' : 'Бой');
-    root.append(b);
-    setTimeout(() => b.remove(), 1500);
+    const b = h('div', { class: 'banner', style: { color: opts.boss ? '#ff8a6a' : 'var(--amber)' } }, opts.boss ? 'СТРАЖ КРУГА' : 'БОЙ');
+    root.append(b); setTimeout(() => b.remove(), 1400);
   }, 200);
 
-  return { el: root, done, stop: () => { stopFx(); } };
+  return { el: root, done, stop: () => cancelAnimationFrame(raf) };
 }
-
-export { HAND_CAP };

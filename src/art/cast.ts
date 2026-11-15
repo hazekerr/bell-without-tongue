@@ -1,5 +1,6 @@
 /* Герои и враги: каждый нарисован вручную. Силуэт, лицо, детали и характерный предмет у каждого свои. */
 import { cloak, makeSprite, type SpriteDef } from './pixel.ts';
+import { CAST2, NAMES2 } from './cast2.ts';
 
 const rep = (ch: string, n: number) => ch.repeat(n);
 const col = (ch: string, n: number) => Array.from({ length: n }, () => ch);
@@ -152,8 +153,9 @@ const reaper: SpriteDef = {
   ],
 };
 
-export const CAST: Record<string, SpriteDef> = { gravedigger, wickkeeper, laundress, candle: candleBearer, bellman, mussel, reaper };
+export const CAST: Record<string, SpriteDef> = { gravedigger, wickkeeper, laundress, candle: candleBearer, bellman, mussel, reaper, ...CAST2 };
 export const NAMES: Record<string, string> = {
+  ...NAMES2,
   gravedigger: 'Могильщик', wickkeeper: 'Свечница', laundress: 'Утопленница-прачка', candle: 'Свечник', bellman: 'Утонувший звонарь', mussel: 'Певчая ракушка', reaper: 'Жнец Хора',
 };
 export const buildCast = () => Object.fromEntries(Object.entries(CAST).map(([k, d]) => [k, makeSprite(d)]));

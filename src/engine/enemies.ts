@@ -66,7 +66,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
 
   /* ───────────── Пролог ───────────── */
   gatekeeper: {
-    id: 'gatekeeper', name: 'Привратник Колодца', hp: [400, 400], circle: 1, tier: 'boss', art: 'alban',
+    id: 'gatekeeper', name: 'Привратник Колодца', hp: [400, 400], circle: 1, tier: 'boss', art: 'gatekeeper',
     blurb: 'Стоит у Врат Нисхождения. Пропускает всех вниз. Назад — не всегда.',
     pick: (e) => atk('judgement', 'Приговор', 6 + 4 * t(e)),
   },

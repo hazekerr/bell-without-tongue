@@ -43,6 +43,8 @@ export interface SpriteDef {
 
 export interface Sprite {
   id: string;
+  /** Центр тела по горизонтали (для привязки к земле). */
+  ax: number;
   w: number;
   h: number;
   /** Кадры анимации: массив готовых canvas. */
@@ -55,13 +57,14 @@ const pad = (s: string, n: number, left: boolean) => (left ? s.padStart(n, '.') 
 /** Собирает сетку символов из слоёв. */
 export function compose(def: SpriteDef): string[][] {
   const grid: Map<string, string> = new Map();
-  let maxX = 0, maxY = 0, minX = 0;
+  let maxX = 0, maxY = 0, minX = 0, minY = 0;
   const put = (x: number, y: number, ch: string) => {
     if (ch === '.' || ch === ' ') return;
     grid.set(`${x},${y}`, ch);
     maxX = Math.max(maxX, x);
     maxY = Math.max(maxY, y);
     minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
   };
   const halfW = Math.max(...def.layers.flatMap((l) => (l.half ?? []).map((r) => r.length)), 0);
   const cx = halfW - 1;
@@ -82,11 +85,12 @@ export function compose(def: SpriteDef): string[][] {
       });
     }
   }
-  const w = maxX - minX + 1, h = maxY + 1;
+  (def as unknown as { ax?: number }).ax = halfW > 0 ? cx - minX : undefined;
+  const w = maxX - minX + 1, h = maxY - minY + 1;
   const out: string[][] = Array.from({ length: h }, () => Array(w).fill('.'));
   for (const [k, v] of grid) {
     const [x, y] = k.split(',').map(Number);
-    out[y][x - minX] = v;
+    out[y - minY][x - minX] = v;
   }
   // рваный низ
   if (def.tatter) {
@@ -98,6 +102,38 @@ export function compose(def: SpriteDef): string[][] {
     }
   }
   return out;
+}
+
+/** Scale2x (EPX): удваивает разрешение, сглаживая лесенки диагоналей, не размывая пиксели. */
+export function scale2x(g: string[][]): string[][] {
+  const h = g.length, w = g[0].length;
+  const out: string[][] = Array.from({ length: h * 2 }, () => Array(w * 2).fill('.'));
+  const at = (x: number, y: number, d: string) => (x >= 0 && y >= 0 && x < w && y < h ? g[y][x] : d);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const P = g[y][x];
+      const A = at(x, y - 1, P), B = at(x + 1, y, P), C = at(x - 1, y, P), D = at(x, y + 1, P);
+      let p1 = P, p2 = P, p3 = P, p4 = P;
+      if (C === A && C !== D && A !== B) p1 = A;
+      if (A === B && A !== C && B !== D) p2 = B;
+      if (D === C && D !== B && C !== A) p3 = C;
+      if (B === D && B !== A && D !== C) p4 = D;
+      out[y * 2][x * 2] = p1; out[y * 2][x * 2 + 1] = p2; out[y * 2 + 1][x * 2] = p3; out[y * 2 + 1][x * 2 + 1] = p4;
+    }
+  return out;
+}
+
+/** Фактура ткани и кожи: редкие светлые и тёмные точки, чтобы заливка не выглядела плоской. */
+function texture(g: string[][]) {
+  const lighter: Record<string, string> = { d: 'c', c: 'C', C: 'h', g: 'G', W: 'o', w: 'W', o: 'O', v: 'V', u: 'U', b: 'B' };
+  const darker: Record<string, string> = { C: 'c', c: 'd', G: 'g', O: 'o', o: 'W', h: 'C', V: 'v', U: 'u' };
+  for (let y = 0; y < g.length; y++)
+    for (let x = 0; x < g[0].length; x++) {
+      const ch = g[y][x];
+      const n = (x * 7 + y * 13 + ((x ^ y) * 3)) % 11;
+      if (n === 0 && lighter[ch]) g[y][x] = lighter[ch];
+      else if (n === 5 && darker[ch] && (y + x) % 2 === 0) g[y][x] = darker[ch];
+    }
 }
 
 const hex = (h: string) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -116,11 +152,11 @@ function renderGrid(g: string[][], def: SpriteDef, frame: number, blinking: bool
     im.data[i] = col[0]; im.data[i + 1] = col[1]; im.data[i + 2] = col[2]; im.data[i + 3] = 255;
   };
   // покачивание подола
-  const hem = def.hem ?? Math.floor(h * 0.75);
+  const hem = def.hem !== undefined ? def.hem * 2 : Math.floor(h * 0.75);
   const rows: string[][] = g.map((row, y) => {
     if (y < hem) return row;
     const amp = (y - hem) / Math.max(1, h - hem);
-    const sh = Math.round(Math.sin(frame * 1.57 + y * 0.45) * 1.4 * amp);
+    const sh = Math.round(Math.sin(frame * 1.57 + y * 0.22) * 2.6 * amp);
     if (!sh) return row;
     const nr = Array(w).fill('.');
     for (let x = 0; x < w; x++) {
@@ -130,7 +166,7 @@ function renderGrid(g: string[][], def: SpriteDef, frame: number, blinking: bool
     return nr;
   });
   const bob = frame % 2 === 1 ? 1 : 0;
-  const oy = 2 + bob * (def.bob ?? 1);
+  const oy = 2 + bob * (def.bob ?? 1) * 2;
   const at = (x: number, y: number) => (y >= 0 && y < h && x >= 0 && x < w ? rows[y][x] : '.');
   // контур
   for (let y = -1; y <= h; y++)
@@ -154,7 +190,7 @@ function renderGrid(g: string[][], def: SpriteDef, frame: number, blinking: bool
         col = hex(PAL[lit && warm[ch] ? (rim === 'top' ? warm[ch] : warm[ch]) : ch] ?? '#ff00ff');
         if (lit && warm[ch]) {
           // не весь край: рассыпаем, чтобы выглядело как свет, а не как обводка
-          if ((x * 7 + y * 13) % 5 === 0) col = hex(PAL[ch]);
+          if ((x * 7 + y * 13) % 4 === 0) col = hex(PAL[ch]);
         }
       }
       set(x + 1, y + oy, col);
@@ -164,10 +200,12 @@ function renderGrid(g: string[][], def: SpriteDef, frame: number, blinking: bool
 }
 
 export function makeSprite(def: SpriteDef): Sprite {
-  const g = compose(def);
+  const g = scale2x(compose(def));
+  texture(g);
   const frames = [0, 1, 2, 3].map((f) => renderGrid(g, def, f, false));
   const blink = renderGrid(g, def, 0, true);
-  return { id: def.id, w: frames[0].width, h: frames[0].height, frames, blink };
+  const bodyX = (def as unknown as { ax?: number }).ax;
+  return { id: def.id, ax: bodyX !== undefined ? (bodyX + 0.5) * 2 + 1 : frames[0].width / 2, w: frames[0].width, h: frames[0].height, frames, blink };
 }
 
 /** Рисует спрайт по нижнему центру. t — время в секундах. */
@@ -178,9 +216,9 @@ export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number,
   ctx.imageSmoothingEnabled = false;
   const w = s.w * scale, h = s.h * scale;
   ctx.save();
-  ctx.translate(Math.round(cx), Math.round(by - h));
+  ctx.translate(Math.round(cx - s.ax * scale), Math.round(by - h));
   if (flip) {
-    ctx.translate(w, 0);
+    ctx.translate(s.ax * scale * 2, 0);
     ctx.scale(-1, 1);
   }
   ctx.drawImage(img, 0, 0, w, h);

@@ -4,7 +4,7 @@ import type { PageGrant } from '../engine/chronicle.ts';
 import { PAGES } from '../content/pages.ts';
 import type { CardInst } from '../engine/types.ts';
 import { audio } from './audio.ts';
-import { motifArt } from './art.ts';
+import { iconArt } from '../art/index.ts';
 import { cardEl } from './cardview.ts';
 import { h, sleep, clear } from './dom.ts';
 import type { HubLine } from '../content/hub.ts';
@@ -21,9 +21,9 @@ export function btn(label: string, cls: string, onClick: () => void, sub?: strin
   return b;
 }
 
-export function sheet(content: HTMLElement | HTMLElement[], opts: { center?: boolean; onClose?: () => void; closable?: boolean } = {}) {
-  const body = h('div', { class: 'body' }, ...(Array.isArray(content) ? content : [content]));
-  const el = h('div', { class: `sheet${opts.center ? ' center' : ''}` }, body);
+export function sheet(content: HTMLElement | HTMLElement[], opts: { cls?: string; onClose?: () => void; closable?: boolean } = {}) {
+  const body = h('div', { class: `body ${opts.cls ?? ''}` }, ...(Array.isArray(content) ? content : [content]));
+  const el = h('div', { class: 'sheet' }, body);
   const close = () => {
     el.remove();
     opts.onClose?.();
@@ -40,18 +40,16 @@ export function toast(title: string, text: string) {
 }
 
 export function inspect(title: string, text: string) {
-  const s = sheet([h('h2', { class: 'title' }, title), h('hr', { class: 'rule' }), ...text.split('\n\n').map((p) => h('p', { style: { fontSize: '18px', margin: '0 0 10px' } }, p)), btn('Понятно', 'ghost', () => s.close())], { center: true });
+  const s = sheet([h('h2', { class: 'title-l' }, title), h('hr', { style: { borderColor: '#5a4a30' } }), ...text.split('\n\n').map((p) => h('p', { class: 'sub', style: { fontSize: '16px', margin: '0 0 8px', fontStyle: 'normal' } }, p)), btn('Понятно', 'ghost', () => s.close())], { cls: 'narrow' });
 }
 
 /** Крупная карта с действиями. */
-export function inspectCard(c: { id: string; up?: boolean }, actions: HTMLElement[] = [], extra?: HTMLElement) {
-  const big = cardEl(c.id, { up: c.up, scale: 1.2 });
-  const wrap = h('div', { style: { display: 'grid', placeItems: 'center', padding: '8px 0 12px' } }, big);
-  const s = sheet([wrap, extra ?? h('div'), h('div', { class: 'stack' }, ...actions, btn('Закрыть', 'ghost', () => s.close()))], { center: true });
+export function inspectCard(c: { id: string; up?: boolean }, actions: HTMLElement[] = []) {
+  const big = cardEl(c.id, { up: c.up, scale: 1.55, flavor: true });
+  const s = sheet([h('div', { class: 'cols', style: { alignItems: 'center' } }, h('div', { style: { padding: '8px 14px 14px 8px' } }, big), h('div', { class: 'grow stack' }, h('p', { class: 'sub', style: { fontStyle: 'normal', fontSize: '15px' } }, CARDS[c.id].flavor ?? ''), ...actions, btn('Закрыть', 'ghost', () => s.close()))) ], { cls: 'narrow' });
   return s;
 }
 
-/** Выбор одной карты из списка. Возвращает индекс или null. */
 export function chooseFromDeck(cards: CardInst[], title: string, confirmLabel = 'Выбрать', canCancel = true): Promise<CardInst | null> {
   return new Promise((resolve) => {
     let sel: CardInst | null = null;
@@ -60,10 +58,9 @@ export function chooseFromDeck(cards: CardInst[], title: string, confirmLabel = 
     (ok as HTMLButtonElement).disabled = true;
     const cancel = canCancel ? btn('Назад', 'ghost', () => { s.el.remove(); resolve(null); }) : null;
     const els = new Map<number, HTMLElement>();
-    const s = sheet([h('h2', { class: 'title' }, title), h('div', { style: { height: '8px' } }), grid, h('div', { style: { height: '14px' } }), h('div', { class: 'stack' }, ok, cancel)], { closable: false });
-    s.body.style.maxHeight = '92%';
+    const s = sheet([h('div', { class: 'row', style: { alignItems: 'center' } }, h('h2', { class: 'title-l', style: { flex: 3 } }, title), ok, cancel ?? h('div')), grid], { cls: 'wide', closable: false });
     for (const c of cards) {
-      const el = cardEl(c.id, { up: c.up, scale: 0.46 });
+      const el = cardEl(c.id, { up: c.up, scale: 0.7 });
       el.style.cursor = 'pointer';
       el.addEventListener('click', () => {
         sel = c;
@@ -78,48 +75,50 @@ export function chooseFromDeck(cards: CardInst[], title: string, confirmLabel = 
   });
 }
 
-/** Выбор одной карты из награды (id'шники). */
+/** Выбор карты из награды: три крупные карты в ряд. */
 export function pickCard(ids: string[], title: string, skipLabel: string | null = 'Пропустить', fresh: Record<string, number> = {}): Promise<string | null> {
   return new Promise((resolve) => {
+    let sel: string | null = null;
     const row = h('div', { class: 'pickrow' });
+    const ok = btn('Взять', 'primary', () => { s.el.remove(); audio.sfx('reward'); resolve(sel); });
+    (ok as HTMLButtonElement).disabled = true;
     const s = sheet([
-      h('h2', { class: 'title' }, title),
-      h('p', { class: 'sub' }, 'Нажми карту, чтобы рассмотреть.'),
-      h('div', { style: { height: '12px' } }),
+      h('div', { class: 'row', style: { alignItems: 'center' } }, h('h2', { class: 'title-l', style: { flex: 2 } }, title), skipLabel ? btn(skipLabel, 'ghost', () => { s.el.remove(); resolve(null); }) : h('div'), ok),
       row,
-      h('div', { style: { height: '16px' } }),
-      skipLabel ? btn(skipLabel, 'ghost', () => { s.el.remove(); resolve(null); }) : h('div'),
-    ], { closable: false });
+    ], { cls: 'wide', closable: false });
+    const els: HTMLElement[] = [];
     for (const id of ids) {
-      const el = cardEl(id, { scale: 0.56, fresh: !!fresh[id] });
+      const el = cardEl(id, { scale: 1.12, fresh: !!fresh[id], flavor: true });
       el.style.cursor = 'pointer';
+      el.style.transition = 'transform .15s';
       el.addEventListener('click', () => {
         audio.sfx('card_up');
-        const ins = inspectCard({ id }, [btn('Взять', 'primary', () => { ins.el.remove(); s.el.remove(); audio.sfx('reward'); resolve(id); })]);
+        sel = id;
+        els.forEach((e) => { e.style.transform = ''; e.style.outline = ''; });
+        el.style.transform = 'translateY(-8px)';
+        el.style.outline = '2px solid #e8a94a';
+        (ok as HTMLButtonElement).disabled = false;
       });
+      els.push(el);
       row.append(el);
     }
   });
 }
 
-/** Откровение страницы Хроники. */
+/** Откровение страницы Хроники: текст слева, открытые карты справа. */
 export async function pageReveal(g: PageGrant) {
   const p = PAGES[g.page];
   if (!p) return;
   audio.sfx('page');
   await new Promise<void>((res) => {
-    const kind = { spine: 'Страница истории', vision: 'Видение', body: 'Тело предшественника', event: 'Находка', chorister: 'Хорист' }[p.kind];
-    const cards = g.newCards.map((id) => cardEl(id, { scale: 0.4, fresh: true }));
+    const kind = { spine: 'СТРАНИЦА ИСТОРИИ', vision: 'ВИДЕНИЕ', body: 'ТЕЛО ПРЕДШЕСТВЕННИКА', event: 'НАХОДКА', chorister: 'ХОРИСТ' }[p.kind];
+    const cards = g.newCards.map((id) => cardEl(id, { scale: 0.8, fresh: true }));
     const s = sheet([
-      h('div', { class: 'kicker', style: { textAlign: 'center' } }, `${kind} · в Хронике`),
-      h('h2', { class: 'title', style: { margin: '6px 0' } }, p.title),
-      h('hr', { class: 'rule' }),
-      h('div', { class: 'prose' }, ...p.text.map((t) => h('p', null, t))),
-      g.newNames.length ? h('p', { class: 'newtag' }, `Имя записано: ${g.newNames.join(', ')}`) : null,
-      cards.length ? h('div', null, h('p', { class: 'kicker', style: { textAlign: 'center' } }, 'Открыты карты'), h('div', { class: 'pickrow' }, ...cards)) : null,
-      h('div', { style: { height: '14px' } }),
+      h('div', { class: 'cols' },
+        h('div', { class: 'grow' }, h('div', { class: 'kicker' }, `${kind} · В ХРОНИКЕ`), h('h2', { class: 'title-l', style: { margin: '2px 0 6px' } }, p.title), h('div', { class: 'prose' }, ...p.text.map((t) => h('p', null, t))), g.newNames.length ? h('p', { class: 'newtag' }, `Имя записано: ${g.newNames.join(', ')}`) : null),
+        cards.length ? h('div', { style: { textAlign: 'center' } }, h('div', { class: 'kicker', style: { marginBottom: '4px' } }, 'ОТКРЫТЫ КАРТЫ'), h('div', { class: 'stack', style: { alignItems: 'center' } }, ...cards)) : h('div')),
       btn('Запомнить', 'primary', () => { s.el.remove(); res(); }),
-    ] as HTMLElement[], { center: true, closable: false });
+    ] as HTMLElement[], { cls: 'wide', closable: false });
   });
 }
 
@@ -127,15 +126,14 @@ export async function pageReveals(gs: PageGrant[]) {
   for (const g of gs) await pageReveal(g);
 }
 
-/** Диалог по строчкам. */
-export function dialogue(lines: HubLine[], bg?: HTMLElement): Promise<void> {
+export function dialogue(lines: HubLine[]): Promise<void> {
   return new Promise((resolve) => {
     let i = 0;
     const who = h('div', { class: 'dlg-who' });
     const text = h('div', { class: 'dlg-text' });
     const hint = h('div', { class: 'dlg-hint' }, 'нажми');
     const box = h('div', { class: 'panel dlg-box' }, who, text, hint);
-    const skip = h('button', { class: 'btn ghost dlg-skip', style: { width: 'auto', minHeight: '38px', padding: '6px 14px', fontSize: '15px' } }, 'Пропустить');
+    const skip = h('button', { class: 'btn ghost dlg-skip', style: { minHeight: '26px', padding: '2px 12px' } }, 'Пропустить');
     const root = h('div', { class: 'dialog' }, skip, box);
     stage().append(root);
     let typing = false;
@@ -159,49 +157,47 @@ export function dialogue(lines: HubLine[], bg?: HTMLElement): Promise<void> {
     };
     const next = () => {
       audio.unlock();
-      if (typing) {
-        tok++;
-        text.textContent = lines[i].text;
-        typing = false;
-        return;
-      }
+      if (typing) { tok++; text.textContent = lines[i].text; typing = false; return; }
       i++;
       if (i >= lines.length) { root.remove(); resolve(); return; }
       void show();
     };
     root.addEventListener('click', (e) => { if (e.target !== skip) next(); });
     skip.addEventListener('click', () => { tok++; root.remove(); resolve(); });
-    void bg;
     void show();
   });
 }
 
-export function relicChip(id: string, big = false) {
+export function relicChip(id: string) {
   const r = RELICS[id];
-  const el = h('button', { class: 'relic', title: `${r.name}: ${r.text}`, html: motifArt(r.art, 'rite', 80, 80), 'aria-label': r.name });
+  const cv = iconArt(r.art);
+  const el = h('button', { class: 'relic', title: `${r.name}: ${r.text}`, 'aria-label': r.name }, cloneCanvas(cv));
   el.addEventListener('click', () => relicSheet(id));
-  void big;
   return el;
+}
+
+export function cloneCanvas(src: HTMLCanvasElement) {
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  c.getContext('2d')!.drawImage(src, 0, 0);
+  return c;
 }
 
 export function relicSheet(id: string) {
   const r = RELICS[id];
   const s = sheet([
-    h('div', { class: 'relic-big' }, h('div', { class: 'relic', html: motifArt(r.art, 'rite', 120, 120) }), h('div', null, h('b', null, r.name), h('p', null, r.text))),
-    h('p', { class: 'sub', style: { margin: '12px 0' } }, r.flavor),
+    h('div', { class: 'relic-big' }, h('div', { class: 'relic' }, cloneCanvas(iconArt(r.art))), h('div', null, h('b', null, r.name), h('p', null, r.text))),
+    h('p', { class: 'sub', style: { margin: '8px 0' } }, r.flavor),
     btn('Закрыть', 'ghost', () => s.close()),
-  ], { center: true });
+  ], { cls: 'narrow' });
   return s;
 }
 
-export function cardsGrid(cards: { id: string; up?: boolean; fresh?: boolean; locked?: boolean }[], onTap?: (c: { id: string; up?: boolean }) => void, scale = 0.46) {
+export function cardsGrid(cards: { id: string; up?: boolean; fresh?: boolean; locked?: boolean }[], onTap?: (c: { id: string; up?: boolean }) => void, scale = 0.7) {
   const g = h('div', { class: 'grid-cards' });
   for (const c of cards) {
     const el = cardEl(c.id, { up: c.up, scale, fresh: c.fresh, locked: c.locked });
-    if (onTap) {
-      el.style.cursor = 'pointer';
-      el.addEventListener('click', () => onTap(c));
-    }
+    if (onTap) { el.style.cursor = 'pointer'; el.addEventListener('click', () => onTap(c)); }
     g.append(el);
   }
   return g;
