@@ -411,7 +411,8 @@ export function onVictory(run: RunState, chron: Chronicle): PageGrant[] {
   chron.wins++;
   chron.bestCircle = Math.max(chron.bestCircle, run.circle);
   const out: PageGrant[] = [];
-  for (const id of ['p_slice_end']) {
+  unlockRole(chron, 'penitent');
+  for (const id of ['p_slice_end', 'p_penitent']) {
     const g = tryGrantPage(chron, id);
     if (g?.isNew) out.push(g);
   }
@@ -422,7 +423,7 @@ export function onVictory(run: RunState, chron: Chronicle): PageGrant[] {
 
 /** Страницы, которые тело (прошлый труп) даёт в узле «Тело». */
 export function bodyPage(run: RunState, chron: Chronicle): PageGrant | null {
-  const order = ['b_1', 'b_2', 'b_3', 'b_4', 'b_5', 'b_6'];
+  const order = ['b_1', 'b_2', 'b_3', 'b_4', 'b_5', 'b_6', 'b_7', 'b_8', 'b_9', 'b_10', 'b_11', 'b_12'];
   for (const id of order) {
     if (!chron.pages.includes(id)) return grantPage(chron, id);
   }

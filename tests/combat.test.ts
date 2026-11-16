@@ -234,3 +234,28 @@ describe('Круг III', () => {
     }
   });
 });
+
+describe('Исповедник и Долг', () => {
+  it('Аккорд исчерпывает Долг из руки и бьёт по всем на 12', () => {
+    const c = setup('penitent', ['mussel', 'mussel'], 4);
+    hand(c, ['strike', 'ward', 'take_loan', 'iou']);
+    c.breath = 6;
+    const hp = c.living.map((e) => e.hp);
+    for (const id of ['strike', 'ward', 'take_loan']) c.play(c.hand.find((x) => x.id === id)!.uid, c.living[0].uid);
+    expect(c.chordDone).toBe(true);
+    expect(c.exhausted.some((x) => x.id === 'iou')).toBe(true);
+    c.living.forEach((e, i) => expect(e.hp).toBeLessThanOrEqual(hp[i] - 12));
+  });
+
+  it('«Исповедь» платит Долгом за карты и Броню, «Взять в долг» добавляет расписку', () => {
+    const c = setup('penitent', ['stone_fisher'], 2);
+    hand(c, ['take_loan', 'confess', 'iou']);
+    c.play(c.hand.find((x) => x.id === 'take_loan')!.uid);
+    expect(c.discard.some((x) => x.id === 'iou')).toBe(true);
+    const before = c.hand.length;
+    c.play(c.hand.find((x) => x.id === 'confess')!.uid);
+    expect(c.exhausted.some((x) => x.id === 'iou')).toBe(true);
+    expect(c.hero.block).toBe(6);
+    expect(c.hand.length).toBeGreaterThanOrEqual(before - 1);
+  });
+});

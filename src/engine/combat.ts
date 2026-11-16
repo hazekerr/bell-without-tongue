@@ -279,11 +279,34 @@ export class Combat {
       case 'bellringer':
         this.addToll(2);
         break;
-      case 'penitent':
+      case 'penitent': {
+        const debt = this.hand.find((x) => this.def(x).type === 'debt');
+        if (debt) {
+          this.exhaustCard(debt, 'hand');
+          for (const e of [...this.living]) this.hurtEnemy(e, 12);
+        } else for (const e of [...this.living]) this.hurtEnemy(e, 5);
         break;
+      }
     }
     if (this.has('bell_cord') && this.chordsThisCombat === 1) this.breath += 1;
     if (this.has('choir_robe')) this.gainBlock(5);
+  }
+
+  /** Исчерпывает карту из руки или сброса. */
+  exhaustCard(card: CardInst, from: 'hand' | 'discard') {
+    const pile = from === 'hand' ? this.hand : this.discard;
+    const i = pile.indexOf(card);
+    if (i < 0) return;
+    pile.splice(i, 1);
+    this.exhausted.push(card);
+    this.emit({ t: 'exhaust', card });
+  }
+  debtsIn(from: 'hand' | 'discard'): CardInst[] {
+    return (from === 'hand' ? this.hand : this.discard).filter((x) => this.def(x).type === 'debt');
+  }
+  addDebt(n: number) {
+    for (let i = 0; i < n; i++) this.discard.push({ uid: this.uid++, id: 'iou', up: false });
+    this.emit({ t: 'log', text: 'В сброс легла расписка.' });
   }
 
   addToll(n: number) {
@@ -578,5 +601,21 @@ export class Ctx {
   }
   get hpPct() {
     return this.c.hero.hp / this.c.hero.maxHp;
+  }
+  /** Сколько Долгов в руке (без самой разыгрываемой карты) и в сбросе. */
+  get debtsHand() {
+    return this.c.debtsIn('hand').length;
+  }
+  get debtsDiscard() {
+    return this.c.debtsIn('discard').length;
+  }
+  /** Исчерпать до n Долгов из руки или сброса, вернёт сколько исчерпано. */
+  payDebts(n: number, from: 'hand' | 'discard' = 'hand') {
+    const list = this.c.debtsIn(from).slice(0, n);
+    for (const d of list) this.c.exhaustCard(d, from);
+    return list.length;
+  }
+  addDebt(n: number) {
+    this.c.addDebt(n);
   }
 }

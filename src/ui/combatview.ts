@@ -33,7 +33,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   cv.width = IW; cv.height = 270; cv.className = 'bgc';
   const bg = sceneCanvas(KIND[opts.circle] ?? 'c2', IW);
   const fog = fogTexture(IW, 80);
-  const heroId = combat.role === 'wickkeeper' ? 'wickkeeper' : combat.role === 'bellringer' ? 'bellringer' : 'gravedigger';
+  const heroId = combat.role === 'wickkeeper' ? 'wickkeeper' : combat.role === 'bellringer' ? 'bellringer' : combat.role === 'penitent' ? 'penitent' : 'gravedigger';
 
   const hintEl = h('div', { class: 'hint' });
   const arena = h('div', { class: 'abs', style: { inset: '0', zIndex: 4 } });

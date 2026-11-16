@@ -354,6 +354,29 @@ function twin(p: Pix, ph: number, bl: boolean, who: 'a' | 'b') {
 const twinA: Draw = (p, ph, bl) => twin(p, ph, bl, 'a');
 const twinB: Draw = (p, ph, bl) => twin(p, ph, bl, 'b');
 
+
+/* ───── Исповедник (герой): согнут под бременем, цепи и книга долгов ───── */
+const penitent: Draw = (p, ph, bl) => {
+  const swing = wob(ph, 0, 2.6);
+  p.shape(poly([[22, 30], [42, 30], [48, 56], [52, 84], ...hem(52, 12, 84, 8, ph, 3, 1), [16, 56]]), [] as never, [12, 30, 52, 88]);
+  p.shape(ell(30, 28, 9, 8), [] as never, [21, 20, 39, 36]);
+  p.shape(poly([[20, 28], [26, 14], [38, 14], [44, 28], [40, 38], [24, 38]]), [] as never, [20, 14, 44, 38]);
+  p.shape(bar(26, 34, 20, 58, 5), [] as never, [14, 32, 30, 62]);
+  p.shape(bar(40, 34, 46, 58, 5), [] as never, [40, 32, 52, 62]);
+  p.shape(rect(36, 50, 52, 66), [] as never, [36, 50, 52, 66]);
+  for (let i = 0; i < 5; i++) {
+    const x1 = 20 - swing * (i * 0.35), y1 = 60 + i * 5;
+    p.accent(rect(x1 - 1.5, y1, x1 + 1.5, y1 + 3.6), i % 2 ? '#8e8d92' : '#4d4c50');
+  }
+  p.shape(poly([[14, 84], [26, 84], [26, 90], [14, 90]]), [] as never, [14, 84, 26, 90]);
+  const bx = 20 - swing * 1.8;
+  p.accent(rect(bx - 4, 78, bx + 4, 86), '#4d4c50');
+  p.accent(rect(38, 52, 50, 64), '#cfc7b2'); for (let i = 0; i < 4; i++) p.accent(rect(40, 54 + i * 2.6, 48, 54.8 + i * 2.6), '#33343c');
+  p.accent(rect(36, 50, 38, 66), '#8a5a2b');
+  p.accent(rect(29, 44, 35, 50), '#c0833a'); p.accent(ell(32, 44, 2.6, 2.6), 'rgba(0,0,0,0)');
+  eyes(p, bl, '#fff0c0', [[26, 28], [33, 28]]);
+};
+
 const DEFS: Record<string, Def> = {
   gravedigger: { w: 64, h: 88, rim: '#e8a94a', dir: 1, draw: gravedigger },
   wickkeeper: { w: 60, h: 94, rim: '#e8a94a', dir: 1, draw: wickkeeper },
@@ -370,6 +393,7 @@ const DEFS: Record<string, Def> = {
   choirmaster: { w: 96, h: 118, rim: '#e8a94a', dir: -1, draw: choirmaster },
   gatekeeper: { w: 100, h: 124, rim: '#8e9fb4', dir: -1, draw: gatekeeper },
   tide: { w: 122, h: 134, rim: '#9ed1c6', dir: -1, draw: tide },
+  penitent: { w: 64, h: 94, rim: '#e8a94a', dir: 1, draw: penitent },
   bellringer: { w: 64, h: 90, rim: '#e8a94a', dir: 1, draw: bellringer },
   shade: { w: 50, h: 96, rim: '#bfe6ff', dir: -1, draw: shade },
   gargoyle: { w: 82, h: 72, rim: '#9cc3e6', dir: -1, draw: gargoyle },
@@ -381,7 +405,7 @@ const DEFS: Record<string, Def> = {
 export const SIL_IDS = Object.keys(DEFS);
 export const SIL_NAMES: Record<string, string> = {
   gravedigger: 'Могильщик', wickkeeper: 'Свечница', laundress: 'Утопленница-прачка', candle: 'Свечник', bellman: 'Утонувший звонарь', mussel: 'Певчая ракушка', hound: 'Тинный пёс',
-  fisher: 'Каменный рыбак', alban: 'Альбан', monk: 'Пепельный монах', seraph: 'Стеклянный серафим', reaper: 'Жнец Хора', bellringer: 'Звонарь', shade: 'Тень хориста', gargoyle: 'Ледяной горгул', knight: 'Склепный страж', agneta: 'Агнета Седьмая', twin_a: 'Ильм Первый', twin_b: 'Ильва Вторая', choirmaster: 'Хормейстер Оттон', gatekeeper: 'Привратник', tide: 'Мать Приливов',
+  fisher: 'Каменный рыбак', alban: 'Альбан', monk: 'Пепельный монах', seraph: 'Стеклянный серафим', reaper: 'Жнец Хора', bellringer: 'Звонарь', penitent: 'Исповедник', shade: 'Тень хориста', gargoyle: 'Ледяной горгул', knight: 'Склепный страж', agneta: 'Агнета Седьмая', twin_a: 'Ильм Первый', twin_b: 'Ильва Вторая', choirmaster: 'Хормейстер Оттон', gatekeeper: 'Привратник', tide: 'Мать Приливов',
 };
 
 /** Живая отрисовка: каждый кадр заново, холст переиспользуется. Фаза непрерывная, поэтому подол, огонь и фонарь движутся плавно. */

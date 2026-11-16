@@ -508,6 +508,79 @@ add({
   play: (x, u, t) => x.dmg(t!, v(u, 20, 26) + (x.hpPct < 0.3 ? 10 : 0)),
 });
 
+/* ═════════════ Исповедник ═════════════ */
+add({
+  id: 'take_loan', name: 'Взять в долг', type: 'rite', cost: 0, pool: 'penitent', rarity: 'basic', target: 'none', art: 'purse', startUnlocked: true,
+  text: (u) => `Получи ${v(u, 2, 3)} Дыхания. Добавь Расписку в сброс.`,
+  play: (x, u) => { x.breath(v(u, 2, 3)); x.addDebt(1); },
+  flavor: 'Заплатишь потом. Все так говорят.',
+});
+add({
+  id: 'confess', name: 'Исповедь', type: 'rite', cost: 0, pool: 'penitent', rarity: 'basic', target: 'none', art: 'candle', startUnlocked: true,
+  text: (u) => `Исчерпай Долг из руки: возьми 2 и получи ${v(u, 6, 9)} Брони. Иначе возьми 1.`,
+  play: (x, u) => { if (x.payDebts(1) > 0) { x.draw(2); x.block(v(u, 6, 9)); } else x.draw(1); },
+});
+add({
+  id: 'penance', name: 'Покаяние', type: 'strike', cost: 1, pool: 'penitent', rarity: 'basic', target: 'enemy', art: 'chain', startUnlocked: true,
+  text: (u) => `Нанеси ${v(u, 7, 9)} урона. +3 за каждый Долг в руке и сбросе (макс. +9).`,
+  play: (x, u, t) => x.dmg(t!, v(u, 7, 9) + Math.min(9, 3 * (x.debtsHand + x.debtsDiscard))),
+});
+add({
+  id: 'scourge', name: 'Бичевание', type: 'strike', cost: 1, pool: 'penitent', rarity: 'common', target: 'enemy', art: 'blood', startUnlocked: true,
+  text: (u) => `Потеряй 3 ЗДР. Нанеси ${v(u, 12, 15)} урона.`,
+  play: (x, u, t) => { x.loseHp(3); x.dmg(t!, v(u, 12, 15)); },
+});
+add({
+  id: 'ledger_ward', name: 'Долговая книга', type: 'ward', cost: 1, pool: 'penitent', rarity: 'common', target: 'none', art: 'scroll', startUnlocked: true,
+  text: (u) => `Получи ${v(u, 6, 9)} Брони. +2 за каждый Долг в руке (макс. +6).`,
+  play: (x, u) => x.block(v(u, 6, 9) + Math.min(6, 2 * x.debtsHand)),
+});
+add({
+  id: 'sackcloth', name: 'Власяница', type: 'ward', cost: 1, pool: 'penitent', rarity: 'common', target: 'none', art: 'shroud', startUnlocked: true,
+  text: (u) => `Потеряй 2 ЗДР. Получи ${v(u, 10, 13)} Брони.`,
+  play: (x, u) => { x.loseHp(2); x.block(v(u, 10, 13)); },
+});
+add({
+  id: 'heavy_glance', name: 'Тяжёлый взгляд', type: 'rite', cost: 1, pool: 'penitent', rarity: 'common', target: 'none', art: 'eye', startUnlocked: true,
+  text: (u) => `Наложи ${T.dread} ${v(u, 2, 3)} всем врагам.`,
+  play: (x, u) => x.applyAll('dread', v(u, 2, 3)),
+});
+add({
+  id: 'debtors_cry', name: 'Крик должника', type: 'rite', cost: 1, pool: 'penitent', rarity: 'common', target: 'enemy', art: 'voice', startUnlocked: true,
+  text: (u) => `Наложи ${T.dread} 2. Исчерпай Долг из руки: нанеси ${v(u, 8, 11)} урона.`,
+  play: (x, u, t) => { x.apply(t!, 'dread', 2); if (x.payDebts(1) > 0 && t!.alive) x.dmg(t!, v(u, 8, 11)); },
+});
+add({
+  id: 'redeem', name: 'Искупление', type: 'strike', cost: 2, pool: 'penitent', rarity: 'uncommon', target: 'enemy', art: 'cross',
+  text: (u) => `Исчерпай все Долги из руки: ${v(u, 6, 8)} урона за каждый (минимум ${v(u, 6, 8)}).`,
+  play: (x, u, t) => { const n = x.payDebts(99); x.dmg(t!, v(u, 6, 8) * Math.max(1, n)); },
+});
+add({
+  id: 'mortgage', name: 'Закладная', type: 'ward', cost: 2, pool: 'penitent', rarity: 'uncommon', target: 'none', art: 'crypt',
+  text: (u) => `Получи ${v(u, 16, 20)} Брони. Добавь 2 Расписки в сброс.`,
+  play: (x, u) => { x.block(v(u, 16, 20)); x.addDebt(2); },
+});
+add({
+  id: 'sin_eater', name: 'Пожиратель грехов', type: 'rite', cost: 1, pool: 'penitent', rarity: 'uncommon', target: 'none', art: 'skull',
+  text: (u) => `Исчерпай Долг из сброса: исцели ${v(u, 6, 9)} и возьми 1.`,
+  play: (x, u) => { if (x.payDebts(1, 'discard') > 0) { x.heal(v(u, 6, 9)); x.draw(1); } },
+});
+add({
+  id: 'chain_dance', name: 'Танец цепей', type: 'strike', cost: 1, pool: 'penitent', rarity: 'uncommon', target: 'enemy', art: 'chain',
+  text: (u) => `Нанеси ${v(u, 5, 7)} урона. ${T.dread} 1. Если Долг в руке: ${T.chains} 1.`,
+  play: (x, u, t) => { const d = x.debtsHand > 0; x.dmg(t!, v(u, 5, 7)); if (t!.alive) { x.apply(t!, 'dread', 1); if (d) x.apply(t!, 'chains', 1); } },
+});
+add({
+  id: 'ledger_burn', name: 'Сжечь книгу', type: 'rite', cost: 2, pool: 'penitent', rarity: 'rare', target: 'none', art: 'flame', exhaust: true,
+  text: (u) => `Исчерпай все Долги из руки и сброса: ${v(u, 8, 11)} урона всем за каждый (макс. ${v(u, 32, 44)}). Исчерпай.`,
+  play: (x, u) => { const n = x.payDebts(99) + x.payDebts(99, 'discard'); if (n) x.dmgAll(Math.min(v(u, 32, 44), v(u, 8, 11) * n)); },
+});
+add({
+  id: 'final_mercy', name: 'Последнее прощение', type: 'rite', cost: 3, pool: 'penitent', rarity: 'rare', target: 'none', art: 'bandage', exhaust: true,
+  text: (u) => `Исцели 20. Исчерпай все Долги из руки. Исчерпай.${u ? ' Стоит 2.' : ''}`,
+  play: (x) => { x.heal(20); x.payDebts(99); },
+});
+
 /* ═════════════ Долги ═════════════ */
 add({
   id: 'iou', name: 'Расписка Ростовщика', type: 'debt', cost: 0, pool: 'debt', rarity: 'common', target: 'none', art: 'iou', unplayable: true, startUnlocked: true,
@@ -527,6 +600,7 @@ export function cardCost(id: string, up: boolean): number {
   const d = CARDS[id];
   if (up && (id === 'agnetas_voice')) return 1;
   if (up && (id === 'gulp_dark' || id === 'burial_psalm')) return 0;
+  if (up && (id === 'funeral_peal' || id === 'final_mercy')) return id === 'final_mercy' ? 2 : 1;
   return d.cost;
 }
 
@@ -534,7 +608,7 @@ export const BASIC_DECKS: Record<string, string[]> = {
   gravedigger: ['strike', 'strike', 'strike', 'strike', 'ward', 'ward', 'ward', 'ward', 'grave_dust', 'dig_deeper'],
   wickkeeper: ['strike', 'strike', 'strike', 'strike', 'ward', 'ward', 'ward', 'ward', 'memorial_candle', 'splinter'],
   bellringer: ['strike', 'strike', 'strike', 'strike', 'ward', 'ward', 'ward', 'ward', 'bell_strike', 'pull_cord'],
-  penitent: [],
+  penitent: ['strike', 'strike', 'strike', 'ward', 'ward', 'ward', 'take_loan', 'confess', 'penance', 'scourge'],
 };
 
 export const ROLE_INFO: Record<string, { name: string; hp: number; tagline: string; chord: string; blurb: string }> = {
@@ -551,5 +625,5 @@ export const ROLE_INFO: Record<string, { name: string; hp: number; tagline: stri
     blurb: 'Платит здоровьем за свет. Каждая сгоревшая свеча — удар сильнее. Хрупкая и яркая.',
   },
   bellringer: { name: 'Звонарь', hp: 72, tagline: 'Звон · Оковы', chord: 'Аккорд: +2 Звона.', blurb: 'Каждая сыгранная карта звенит. На шестом ударе колокол бьёт по всем врагам на 6 урона. Ритм вместо расчёта.' },
-  penitent: { name: 'Исповедник', hp: 70, tagline: 'Долг · Страх', chord: '—', blurb: 'Откроется по ходу истории.' },
+  penitent: { name: 'Исповедник', hp: 70, tagline: 'Долг · Страх', chord: 'Аккорд: исчерпай Долг из руки и нанеси 12 урона всем (без Долга: 5).', blurb: 'Берёт в долг и платит болью. Расписки в колоде не проклятие, а топливо.' },
 };

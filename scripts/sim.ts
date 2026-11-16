@@ -181,7 +181,7 @@ export function simulate(role: RoleId, seed: string, chron: Chronicle): SimResul
 }
 
 const N = Number(process.argv[2] ?? 300);
-for (const role of ['gravedigger', 'wickkeeper', 'bellringer'] as RoleId[]) {
+for (const role of ['gravedigger', 'wickkeeper', 'bellringer', 'penitent'] as RoleId[]) {
   const res: SimResult[] = [];
   const chron = newChronicle();
   for (let i = 0; i < N; i++) res.push(simulate(role, `${role}-${i}`, chron));

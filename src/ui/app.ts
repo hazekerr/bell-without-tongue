@@ -180,7 +180,7 @@ function openRolePick() {
     cvs.width = 64; cvs.height = 64;
     const x = cvs.getContext('2d')!;
     x.fillStyle = '#18141f'; x.fillRect(0, 0, 64, 64);
-    const sp = sprite(r === 'wickkeeper' ? 'wickkeeper' : r === 'bellringer' ? 'bellringer' : 'gravedigger');
+    const sp = sprite(r === 'wickkeeper' ? 'wickkeeper' : r === 'bellringer' ? 'bellringer' : r === 'penitent' ? 'penitent' : 'gravedigger');
     drawSprite(x, sp, 32, 62, Math.min(1, 56 / sp.h), 0, false, 0);
     const card = h('button', { class: `role-card${open ? '' : ' locked'}` }, cvs, h('h3', null, info.name), h('div', { class: 'tag' }, info.tagline), h('p', null, open ? info.blurb : 'Откроется по ходу истории.'), open ? h('p', { style: { color: 'var(--amber)' } }, info.chord) : h('div'), open ? h('div', { class: 'sub', style: { fontSize: '12px' } }, `ЗДР ${info.hp} · 10 карт · 3 Дыхания`) : h('div'));
     if (open) card.addEventListener('click', () => { audio.sfx('tap'); s.close(); void beginRun(r); });
@@ -193,7 +193,7 @@ async function beginRun(role: 'gravedigger' | 'wickkeeper' | 'bellringer' | 'pen
   save();
   audio.sfx('bell');
   mount(h('div', { class: 'screen', style: { background: '#000' } }));
-  await dialogue([{ who: 'Рассказчик', text: `Ты надеваешь память ${role === 'gravedigger' ? 'могильщика' : role === 'wickkeeper' ? 'свечницы' : 'звонаря'}. Она тяжёлая, но своя.` }]);
+  await dialogue([{ who: 'Рассказчик', text: `Ты надеваешь память ${role === 'gravedigger' ? 'могильщика' : role === 'wickkeeper' ? 'свечницы' : role === 'bellringer' ? 'звонаря' : 'исповедника'}. Она тяжёлая, но своя.` }]);
   showMap();
 }
 
@@ -583,7 +583,7 @@ function openChronicle() {
 /* ───────────────── Библиотека карт ───────────────── */
 function openLibrary() {
   const c = G.chron;
-  const tabs: [string, string][] = [['gravedigger', 'Могильщик'], ['wickkeeper', 'Свечница'], ['bellringer', 'Звонарь'], ['neutral', 'Общие'], ['debt', 'Долги']];
+  const tabs: [string, string][] = [['gravedigger', 'Могильщик'], ['wickkeeper', 'Свечница'], ['bellringer', 'Звонарь'], ['penitent', 'Исповедник'], ['neutral', 'Общие'], ['debt', 'Долги']];
   let tab = 'gravedigger';
   const grid = h('div', { style: { maxHeight: '250px', overflowY: 'auto' } });
   const tabsEl = h('div', { class: 'tabs' });
