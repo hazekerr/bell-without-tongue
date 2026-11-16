@@ -144,13 +144,23 @@ export async function showHub(opts: { talk?: boolean } = {}) {
   const last = G.chron.bodies[0];
   const settings = h('button', { class: 'icon-btn', 'aria-label': 'Настройки', style: { position: 'absolute', left: '14px', bottom: '12px', zIndex: 4 } }, '⚙');
   settings.addEventListener('click', () => openSettings());
+  // жители Сальвена на набережной: Ильзе, последний выбранный герой, Мёрк и Тин
+  const lastRole = G.run?.role ?? G.chron.bodies[0]?.role ?? 'gravedigger';
+  const fl = figureLayer([
+    { id: 'laundress', x: 0.08, scale: 0.95, flip: false },
+    { id: heroArt(lastRole), x: 0.22, warm: true },
+    { id: lastRole === 'gravedigger' ? 'fisher' : 'gravedigger', x: 0.36, flip: true, scale: 0.95 },
+    { id: 'candle', x: 0.45, scale: 0.55 },
+  ], 160, G.chron.settings.reduceMotion);
   s.root.append(
+    fl.el,
     h('div', { class: 'board' }, h('b', null, `ЗВОНОВ: ${G.chron.tolls}`), last ? h('i', null, last.epitaph) : h('i', null, 'Доска Мёрка пуста. Пока.')),
     h('div', { class: 'side' },
       G.run ? h('div', null, btn('Продолжить спуск', 'primary', () => showMap(), `${CIRCLE_NAME[G.run.circle]} · ${G.run.hp}/${G.run.maxHp}`), btn('Оставить спуск', 'ghost', () => abandonConfirm())) : btn('Спуститься', 'primary', () => openRolePick(), 'Колода и здоровье не сохраняются'),
       h('div', { class: 'row' }, btn('Хроника', 'ghost', () => openChronicle(), `${G.chron.pages.length}/${PAGE_LIST.length}`), btn('Карты', 'ghost', () => openLibrary(), `${countUnlocked()}/${Object.keys(CARDS).length}`))),
     settings,
   );
+  { const m = s.mount; s.mount = () => { m(); fl.start(); }; }
   s.mount();
   if (opts.talk) {
     await sleep(500);
