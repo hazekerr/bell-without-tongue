@@ -19,7 +19,7 @@ export interface CombatUI {
 interface View { heroHp: number; heroBlock: number; e: Map<number, { hp: number; block: number; dead: boolean }> }
 interface Anim { shake: number; lunge: number; alpha: number }
 
-const HAND_SCALE = 0.76;
+const HAND_SCALE = 0.68;
 const SPRITE_SCALE: Record<string, number> = { tide: 0.72, choirmaster: 0.78, gatekeeper: 0.8, alban: 0.92, reaper: 0.92, seraph: 0.9, fisher: 0.92 };
 const FEET = 154; // нижняя точка спрайтов во внутренних координатах (высота сцены 270)
 const KIND: Record<number, 'c1' | 'c2' | 'c3'> = { 1: 'c1', 2: 'c2', 3: 'c3' };
@@ -29,8 +29,18 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   const SW = stage().clientWidth || 800; // ширина сцены в дизайн-пикселях
   const IW = Math.round(270 * SW / 390);
   const K = 390 / 270;
+  // Низкое разрешение рисуем в off, затем растим целым множителем без сглаживания:
+  // пиксели остаются чёткими, браузер лишь слегка сжимает остаток до размера экрана.
+  const off = document.createElement('canvas');
+  off.width = IW; off.height = 270;
   const cv = document.createElement('canvas');
-  cv.width = IW; cv.height = 270; cv.className = 'bgc';
+  cv.className = 'bgc';
+  let kUp = 0;
+  const fitUp = () => {
+    const k = Math.max(2, Math.min(6, Math.ceil(((stage().clientHeight || 390) * (window.devicePixelRatio || 1)) / 270)));
+    if (k !== kUp) { kUp = k; cv.width = IW * k; cv.height = 270 * k; }
+  };
+  fitUp();
   const bg = sceneCanvas(KIND[opts.circle] ?? 'c2', IW);
   const fog = fogTexture(IW, 80);
   const heroId = combat.role === 'wickkeeper' ? 'wickkeeper' : combat.role === 'bellringer' ? 'bellringer' : combat.role === 'penitent' ? 'penitent' : 'gravedigger';
@@ -78,7 +88,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   let lastMs = 0;
   const frame = (ms: number) => {
     const t = ms / 1000;
-    const x = cv.getContext('2d')!;
+    const x = off.getContext('2d')!;
     x.imageSmoothingEnabled = false;
     x.drawImage(bg, 0, 0);
     if (!reduce) { x.globalAlpha = 0.6; x.drawImage(fog, -((t * 6) % IW), 118); x.drawImage(fog, IW - ((t * 6) % IW), 118); x.globalAlpha = 1; }
@@ -120,6 +130,10 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
       if (r.x < 0) r.x = IW;
       if (opts.circle >= 2) x.fillRect(Math.floor(r.x), Math.floor(r.y), 1, 1); else x.fillRect(Math.floor(r.x), Math.floor(r.y), 1, 3);
     }
+    fitUp();
+    const vx = cv.getContext('2d')!;
+    vx.imageSmoothingEnabled = false;
+    vx.drawImage(off, 0, 0, cv.width, cv.height);
     raf = requestAnimationFrame(frame);
   };
 

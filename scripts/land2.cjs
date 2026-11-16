@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 const OUT = process.env.OUT || '/tmp/claude-0/shots';
 (async () => {
   const b = await chromium.launch();
-  const p = await (await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true })).newPage();
+  const p = await (await b.newContext({ viewport: { width: +(process.env.W||844), height: +(process.env.H||390) }, deviceScaleFactor: 1 })).newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push('PAGEERR ' + e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push('CONSOLE ' + m.text()); });
   await p.goto('http://127.0.0.1:5173/?debug', { waitUntil: 'networkidle' });

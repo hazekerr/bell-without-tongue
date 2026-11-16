@@ -574,11 +574,11 @@ async function returnSequence(rep: ReturnReport, run: ReturnType<typeof startRun
   let resolveNext!: () => void;
   const p1 = new Promise<void>((r) => (resolveNext = r));
   read.root.append(h('div', { class: 'abs', style: { inset: '14px 24px 12px', display: 'flex', gap: '20px', zIndex: 3 } },
-    h('div', { style: { flex: 1.3, display: 'flex', flexDirection: 'column' } }, h('div', { class: 'kicker' }, 'ПРОЧТЕНИЕ'), h('h2', { class: 'title-l' }, 'Что запомнило тело'),
-      h('div', { class: 'autopsy' }, stat('Звон №', String(rep.tollNo)), stat('Где', `${ROMAN[run.circle]} Круг · этаж ${(run.active ? nodeById(run, run.active)?.floor ?? 0 : 0) + 1}`), stat('Убийца', killer?.name ?? '—'), stat('Аккордов', String(run.stats.chords))),
+    h('div', { class: 'read-col', style: { flex: 1.3, display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 } }, h('div', { class: 'kicker' }, 'ПРОЧТЕНИЕ'), h('h2', { class: 'title-l' }, 'Что запомнило тело'),
+      h('div', { class: 'autopsy' }, stat('Звон №', String(rep.tollNo)), stat('Где', `${ROMAN[run.circle]} круг, эт. ${(run.active ? nodeById(run, run.active)?.floor ?? 0 : 0) + 1}`), stat('Убийца', killer?.name ?? '—'), stat('Аккордов', String(run.stats.chords))),
       h('p', { class: 'sub' }, killedBy > 1 ? `Это ${killedBy}-й раз. Ильзе читает быстрее.` : 'Ильзе кладёт ладонь на шрам-колокол и замирает.'),
       rep.vision?.isNew ? h('p', { class: 'newtag' }, `Видение записано: «${PAGES[rep.vision.page].title}»`) : null,
-      ...rep.extra.map((g) => h('p', { class: 'newtag' }, `Страница: «${PAGES[g.page].title}»`)),
+      rep.extra.length ? h('p', { class: 'newtag' }, `Страницы: ${rep.extra.map((g) => '«' + PAGES[g.page].title + '»').join(', ')}`) : null,
       h('div', { style: { marginTop: 'auto', width: '240px' } }, btn('Дальше', 'primary', () => resolveNext()))),
     h('div', { style: { flex: 1, textAlign: 'center' } }, newCards.length ? h('div', null, h('div', { class: 'kicker', style: { marginBottom: '4px' } }, 'ОТКРЫТЫ КАРТЫ'), h('div', { class: 'pickrow' }, ...newCards.slice(0, 3).map((id) => cardEl(id, { scale: 0.85, fresh: true })))) : h('p', { class: 'sub' }, 'Новых карт нет. Но ты уже знаешь, как это выглядит.'))));
   read.mount();

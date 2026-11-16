@@ -149,7 +149,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 .hint { position: absolute; left: 60px; right: 110px; bottom: 140px; z-index: 7; text-align: center; font-size: 14px; color: var(--dim); text-shadow: 1px 1px 0 #000; pointer-events: none; min-height: 14px; }
 .hand-zone { position: absolute; left: 0; right: 0; bottom: 0; height: 142px; z-index: 5; }
 .hand { position: absolute; left: 56px; right: 100px; bottom: 6px; height: 134px; }
-.hand .cw { position: absolute; bottom: 14px; transition: transform .25s cubic-bezier(.2,.8,.2,1), filter .2s; transform-origin: 50% 100%; cursor: pointer; will-change: transform; }
+.hand .cw { position: absolute; bottom: 8px; transition: transform .25s cubic-bezier(.2,.8,.2,1), filter .2s; transform-origin: 50% 100%; cursor: pointer; will-change: transform; }
 .hand .cw.sel { z-index: 50 !important; }
 .end-turn { position: absolute; right: 8px; bottom: 10px; z-index: 9; width: 80px; height: 66px; display: grid; place-items: center; text-align: center; font-weight: 600; font-size: 16px; line-height: 1.05; color: #1a0f04; background: linear-gradient(#f6cf7a, #c0833a); box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px #ffe9b0, 0 0 0 6px var(--ink), 0 8px 0 6px rgba(0,0,0,.4); }
 .end-turn svg { width: 22px; height: 22px; fill: #3a2208; display: block; margin: 0 auto 1px; }
@@ -260,7 +260,7 @@ h1, h2, h3, .btn, .title-l, .banner, .end-turn, .tab, .intent, .float, .kicker, 
 .board b { font-family: var(--ps); font-size: 8px; }
 .role-card h3 { font-size: 11px; } .gold-line { font-family: var(--ps); font-size: 12px; } .price { font-family: var(--ps); font-size: 9px; }
 .hint { top: 32px; bottom: auto; left: 56px; right: 100px; font-size: 14px; }
-.hand-zone { height: 136px; } .hand { bottom: 4px; height: 128px; } .hand .cw { bottom: 10px; }
+.hand-zone { height: 136px; } .hand { bottom: 4px; height: 128px; } .hand .cw { bottom: 6px; }
 .opt { font-size: 17px; } .opt small { font-size: 14px; } .rest-opts .opt b { font-family: var(--ps); font-size: 10px; }
 .settings label, .dlg-hint { font-size: 14px; }
 .node-label, .nlabel { font-size: 12px; }
@@ -289,3 +289,7 @@ h1, h2, h3, .btn, .title-l, .banner, .end-turn, .tab, .intent, .float, .kicker, 
 
 /* мягкие пиксели: сцена масштабируется со сглаживанием */
 .bgc { image-rendering: auto; }
+
+/* Прочтение: плотная колонка на тёмной подложке, кнопка всегда в кадре */
+.read-col { background: linear-gradient(90deg, rgba(8,7,12,.82), rgba(8,7,12,.55)); padding: 10px 12px; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #3d3350; }
+.read-col p { margin: 0; } .read-col .newtag { font-size: 17px; color: #f2c26a; } .read-col .sub { color: #cfc7b2; font-size: 20px; }
