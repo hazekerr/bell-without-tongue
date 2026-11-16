@@ -90,6 +90,17 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     const dt = Math.min(2, (ms - (lastMs || ms)) / 16.7); lastMs = ms;
     for (const a of [heroAnim, ...anim.values()]) { a.shake *= Math.pow(0.85, dt); a.lunge *= Math.pow(0.9, dt); }
     const ha = heroAnim;
+    // мягкая подсветка за силуэтами: чёрная форма читается на фоне
+    const glow = (cx: number, h: number, warm: boolean) => {
+      const g = x.createRadialGradient(cx, FEET - h * 0.5, 4, cx, FEET - h * 0.5, h * 0.95);
+      g.addColorStop(0, warm ? 'rgba(232,169,74,.34)' : 'rgba(170,205,215,.42)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.globalCompositeOperation = 'lighter'; x.fillStyle = g;
+      x.fillRect(cx - h, FEET - h * 1.6, h * 2, h * 1.8);
+      x.globalCompositeOperation = 'source-over';
+    };
+    glow(heroX, 80, true);
+    for (const e of combat.enemies) if (e.alive) glow(posX.get(e.uid) ?? 0, 60 + spr(e).h * sc(e) * 0.4, false);
     drawSprite(x, sprite(heroId), heroX + Math.sin(ha.shake * 6) * ha.shake - ha.lunge * 16, FEET + 3, 1, t, false, 0);
     combat.enemies.forEach((e, i) => {
       const a = anim.get(e.uid)!;
@@ -212,7 +223,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     const n = combat.hand.length;
     const area = Math.max(200, SW - 156);
     const cw = 120 * HAND_SCALE;
-    const step = n <= 1 ? 0 : Math.min(cw * 0.84, (area - cw) / (n - 1));
+    const step = n <= 1 ? 0 : Math.min(cw * 1.04, (area - cw) / (n - 1));
     return { n, cw, step, area };
   };
 
@@ -228,8 +239,8 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
       const el = cardEl(c.id, { up: c.up, scale: HAND_SCALE, costNow: combat.cost(c), returned: c.returned, noafford: !can && !d.unplayable && d.type !== 'debt', unplayable: !!d.unplayable });
       el.style.left = `${x0 + i * step}px`;
       el.style.zIndex = String(10 + i);
-      const y = Math.abs(off) * Math.abs(off) * 1.4;
-      el.style.transform = `translateY(${y}px) rotate(${off * (n > 6 ? 1.8 : 2.4)}deg)`;
+      const y = Math.abs(off) * Math.abs(off) * 0.8;
+      el.style.transform = `translateY(${y}px) rotate(${off * (n > 6 ? 1.2 : 1.6)}deg)`;
       el.dataset.uid = String(c.uid);
       if (justDrawn.has(c.uid) && !reduce) {
         el.animate([{ transform: `translate(-80px, 60px) rotate(-20deg) scale(.6)`, opacity: 0 }, { transform: el.style.transform, opacity: 1 }], { duration: 340, delay: 40 * [...justDrawn].indexOf(c.uid), easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
