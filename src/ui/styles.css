@@ -135,7 +135,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 .st.rot i { background: #8ab04a; } .st.bleed i { background: #d03a3a; } .st.dread i { background: #9a7ac8; } .st.chains i { background: #aab; } .st.flame i { background: #f0932a; } .st.toll i { background: var(--amber); }
 .herohud { position: absolute; z-index: 5; transform: translateX(-50%); width: 130px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .herohud .row2 { display: flex; gap: 4px; align-items: center; }
-.leftcol { position: absolute; left: 6px; bottom: 6px; z-index: 8; width: 44px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.leftcol { position: absolute; left: 8px; bottom: 10px; z-index: 8; width: 56px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .orbs { display: flex; flex-direction: column; gap: 3px; align-items: center; }
 .orb { width: 18px; height: 18px; background: var(--amber); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #7a4a14, 0 0 8px var(--amber); transition: all .3s; }
 .orb.off { background: #2a2218; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #3a2c1c; }
@@ -293,3 +293,9 @@ h1, h2, h3, .btn, .title-l, .banner, .end-turn, .tab, .intent, .float, .kicker, 
 /* Прочтение: плотная колонка на тёмной подложке, кнопка всегда в кадре */
 .read-col { background: linear-gradient(90deg, rgba(8,7,12,.82), rgba(8,7,12,.55)); padding: 10px 12px; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #3d3350; }
 .read-col p { margin: 0; } .read-col .newtag { font-size: 17px; color: #f2c26a; } .read-col .sub { color: #cfc7b2; font-size: 20px; }
+
+/* Дыхание: один круглый индикатор вместо колонки квадратов */
+.energy { width: 46px; height: 46px; border-radius: 50%; display: grid; place-content: center; text-align: center; color: #1a0f04; background: radial-gradient(circle at 35% 30%, #ffe3a0, #e8a94a 60%, #b87428); box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px #ffe9b0, 0 0 0 6px var(--ink), 0 0 14px rgba(232,169,74,.6); }
+.energy b { font-family: var(--ps); font-size: 16px; line-height: 1; } .energy small { font-family: var(--ps); font-size: 7px; opacity: .7; }
+.energy.off { filter: grayscale(.8) brightness(.55); box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px #4a4a58, 0 0 0 6px var(--ink); }
+.energy-cap { margin-top: 6px; font-family: var(--ps); font-size: 6px; letter-spacing: .1em; color: var(--dim); text-align: center; }

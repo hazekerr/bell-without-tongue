@@ -21,7 +21,7 @@ interface Anim { shake: number; lunge: number; alpha: number }
 
 const HAND_SCALE = 0.68;
 const SPRITE_SCALE: Record<string, number> = { tide: 0.72, choirmaster: 0.78, gatekeeper: 0.8, alban: 0.92, reaper: 0.92, seraph: 0.9, fisher: 0.92 };
-const FEET = 154; // нижняя точка спрайтов во внутренних координатах (высота сцены 270)
+const FEET = 140; // нижняя точка спрайтов во внутренних координатах (высота сцены 270)
 const KIND: Record<number, 'c1' | 'c2' | 'c3'> = { 1: 'c1', 2: 'c2', 3: 'c3' };
 
 export function buildCombat(combat: Combat, opts: { circle: number; boss: boolean; onInspect: (title: string, text: string) => void; onPiles: (kind: 'draw' | 'discard' | 'grave' | 'exhaust') => void }): CombatUI {
@@ -52,7 +52,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   const orbs = h('div', { class: 'orbs' });
   const heroHud = h('div', { class: 'herohud' });
   const turnLabel = h('div', { class: 'grow' });
-  const preview = h('div', { class: 'preview', style: { left: '36%', top: '36px' } });
+  const preview = h('div', { class: 'preview', style: { left: '33%', top: '34px' } });
   const hit = h('div', { class: 'hitflash' });
   const pile = (n: string) => h('button', { class: 'pile', 'aria-label': n }, n, h('b', null, '0'));
   const pileDraw = pile('Колода'), pileDis = pile('Сброс'), pileGrave = pile('Могила');
@@ -90,7 +90,9 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     const t = ms / 1000;
     const x = off.getContext('2d')!;
     x.imageSmoothingEnabled = false;
-    x.drawImage(bg, 0, 0);
+    // сцена сдвинута вверх на 14, чтобы подписи и полоски врагов оставались над рукой карт
+    x.drawImage(bg, 0, -14);
+    x.drawImage(bg, 0, 236, IW, 34, 0, 256, IW, 14);
     if (!reduce) { x.globalAlpha = 0.6; x.drawImage(fog, -((t * 6) % IW), 118); x.drawImage(fog, IW - ((t * 6) % IW), 118); x.globalAlpha = 1; }
     // тень под героями
     x.fillStyle = 'rgba(0,0,0,.4)';
@@ -222,7 +224,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     );
     const total = Math.max(3, combat.breath);
     clear(orbs);
-    for (let i = 0; i < total; i++) orbs.append(h('div', { class: `orb${i < combat.breath ? '' : ' off'}` }));
+    orbs.append(h('div', { class: `energy${combat.breath <= 0 ? ' off' : ''}`, 'aria-label': `Дыхание ${combat.breath} из ${total}` }, h('b', null, `${combat.breath}`), h('small', null, `/${total}`)), h('div', { class: 'energy-cap' }, 'ДЫХАНИЕ'));
     clear(sigs);
     const full = combat.typesPlayed.size >= 3;
     sigs.className = `sigs${full ? ' full' : ''}`;
@@ -274,7 +276,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     clear(preview);
     const c = selUid !== null ? combat.hand.find((x) => x.uid === selUid) : undefined;
     if (!c) { hintEl.textContent = combat.phase === 'hero' && combat.turn <= 2 && combat.chordsThisCombat === 0 && !G.chron.tolls ? 'Сыграй Удар, Оберег и Обряд за один ход: это Аккорд.' : ''; return; }
-    preview.append(cardEl(c.id, { up: c.up, scale: 1.5, costNow: combat.cost(c), returned: c.returned, flavor: true }));
+    preview.append(cardEl(c.id, { up: c.up, scale: 1.1, costNow: combat.cost(c), returned: c.returned, flavor: true }));
     const d = CARDS[c.id];
     hintEl.textContent = !combat.canPlay(c.uid)
       ? d.unplayable ? 'Эту карту нельзя сыграть.' : 'Не хватает Дыхания.'
