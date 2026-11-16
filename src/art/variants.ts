@@ -33,9 +33,28 @@ export const M = {
 export class Pix {
   c: HTMLCanvasElement;
   x: CanvasRenderingContext2D;
-  constructor(public w: number, public h: number, private look: Look, private rim = '#e8a94a') {
-    this.c = document.createElement('canvas'); this.c.width = w; this.c.height = h;
+  constructor(public w: number, public h: number, private look: Look, private rim = '#e8a94a', public S = 1) {
+    this.c = document.createElement('canvas'); this.c.width = w * S; this.c.height = h * S;
     this.x = this.c.getContext('2d')!;
+    this.x.scale(S, S);
+  }
+  /** Очистка для повторного рисования в том же холсте. */
+  reset() { this.x.setTransform(1, 0, 0, 1, 0, 0); this.x.clearRect(0, 0, this.c.width, this.c.height); this.x.globalAlpha = 1; this.x.scale(this.S, this.S); }
+  private tint?: HTMLCanvasElement;
+  private out?: HTMLCanvasElement;
+  /** Мягкий финиш: без пороговой обрезки, тонкий тёмный контур со сглаживанием. Холст получает отступ по 2 пикселя. */
+  finishSoft(): HTMLCanvasElement {
+    const W = this.c.width + 4, H = this.c.height + 4;
+    if (!this.tint) { this.tint = document.createElement('canvas'); this.out = document.createElement('canvas'); }
+    const t = this.tint, o = this.out!;
+    t.width = this.c.width; t.height = this.c.height; o.width = W; o.height = H;
+    const tc = t.getContext('2d')!;
+    tc.globalCompositeOperation = 'source-over'; tc.drawImage(this.c, 0, 0);
+    tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#05060a'; tc.fillRect(0, 0, t.width, t.height);
+    const oc = o.getContext('2d')!;
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]]) oc.drawImage(t, 2 + dx * 1.1, 2 + dy * 1.1);
+    oc.drawImage(this.c, 2, 2);
+    return o;
   }
   /** Фигура с тремя тонами. Свет приходит справа (dir=1) или слева (dir=-1). */
   shape(path: Path, mat: Mat, bb: [number, number, number, number], dir: 1 | -1 = 1) {

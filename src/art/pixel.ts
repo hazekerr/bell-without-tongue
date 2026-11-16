@@ -50,6 +50,10 @@ export interface Sprite {
   /** Кадры анимации: массив готовых canvas. */
   frames: HTMLCanvasElement[];
   blink: HTMLCanvasElement;
+  /** Живая отрисовка каждый кадр (для плавной анимации): время и сдвиг фазы → холст. */
+  live?: (t: number, phase: number) => HTMLCanvasElement;
+  /** Сколько пикселей холста приходится на один дизайн-пиксель (для живых спрайтов 2). */
+  k?: number;
 }
 
 const pad = (s: string, n: number, left: boolean) => (left ? s.padStart(n, '.') : s.padEnd(n, '.'));
@@ -202,8 +206,22 @@ export function makeSprite(def: SpriteDef): Sprite {
   return { id: def.id, ax: bodyX !== undefined ? (bodyX + 0.5) * 2 + 1 : frames[0].width / 2, w: frames[0].width, h: frames[0].height, frames, blink };
 }
 
-/** Рисует спрайт по нижнему центру. t — время в секундах. */
+/** Рисует спрайт по нижнему центру. t — время в секундах. Живые спрайты рисуются каждый кадр и слегка дышат и покачиваются. */
 export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number, by: number, scale = 1, t = 0, flip = false, phase = 0) {
+  if (s.live) {
+    const img = s.live(t, phase);
+    const k = s.k ?? 2;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.translate(cx, by);
+    ctx.rotate(Math.sin(t * 1.3 + phase * 2.1) * 0.012);
+    ctx.scale(flip ? -1 : 1, 1 + Math.sin(t * 2.1 + phase * 1.7) * 0.014);
+    const w = (img.width * scale) / k, h = (img.height * scale) / k;
+    ctx.drawImage(img, -s.ax * scale, -(h - scale * 1.5), w, h);
+    ctx.restore();
+    return;
+  }
   const f = Math.floor((t * 3 + phase) % 4);
   const blinking = ((t + phase * 0.37) % 4.2) > 4.05;
   const img = blinking ? s.blink : s.frames[f];
@@ -211,10 +229,7 @@ export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number,
   const w = s.w * scale, h = s.h * scale;
   ctx.save();
   ctx.translate(Math.round(cx - s.ax * scale), Math.round(by - h));
-  if (flip) {
-    ctx.translate(s.ax * scale * 2, 0);
-    ctx.scale(-1, 1);
-  }
+  if (flip) { ctx.translate(s.ax * scale * 2, 0); ctx.scale(-1, 1); }
   ctx.drawImage(img, 0, 0, w, h);
   ctx.restore();
 }

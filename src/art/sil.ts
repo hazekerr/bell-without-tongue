@@ -67,7 +67,7 @@ const laundress: Draw = (p, ph, bl) => {
   p.shape(bar(26, 34, 20, 50, 4.5), [] as never, [16, 32, 30, 52]); p.shape(bar(38, 34, 40, 50, 4.5), [] as never, [36, 32, 44, 52]);
   p.shape(ell(32, 21, 8, 10), [] as never, [24, 11, 40, 31]);
   p.shape(bar(23, 26, 21, 66, 4), [] as never, [18, 24, 26, 68]); p.shape(bar(41, 26, 44, 62, 4), [] as never, [39, 24, 47, 64]);
-  const d1 = (ph * 3) % 6, d2 = (ph * 3 + 3) % 6;
+  const d1 = (ph * 2.4) % 6, d2 = (ph * 2.4 + 3) % 6;
   p.accent(rect(12, 79 + d1 * 0.4, 14, 83 + d1 * 0.4), '#9ec8d4'); p.accent(rect(22, 78 + d2 * 0.4, 24, 82 + d2 * 0.4), '#9ec8d4');
   for (let i = 0; i < 3; i++) p.accent(rect(9, 54 + i * 8, 28, 55 + i * 8), 'rgba(158,200,212,.45)');
   eyes(p, bl, '#bfe6ff', [[28, 20]]); p.accent(rect(34, 20, 37, 22), '#05060a');
@@ -101,7 +101,7 @@ const bellman: Draw = (p, ph, bl) => {
 
 /* ───── Певчая ракушка ───── */
 const mussel: Draw = (p, ph, bl) => {
-  const open = 3 + Math.round(Math.sin(ph * 1.57) * 1.5);
+  const open = 3 + Math.sin(ph * 1.57) * 1.6;
   p.shape(ell(30, 34 + open, 26, 8), [] as never, [4, 28, 56, 46]);
   p.shape(ell(30, 19 - open * 0.4, 26, 16), [] as never, [4, 3, 56, 35]);
   p.accent(rect(8, 26 - open * 0.4, 52, 29 + open), '#7a1f24');
@@ -164,7 +164,7 @@ const monk: Draw = (p, ph, bl) => {
 
 /* ───── Стеклянный серафим ───── */
 const seraph: Draw = (p, ph, bl) => {
-  const lift = Math.round(Math.sin(ph * 1.57) * 2);
+  const lift = Math.sin(ph * 1.57) * 2.4;
   p.x.translate(0, lift);
   for (const s of [-1, 1]) {
     const X = (d: number) => 50 + s * d;
@@ -268,13 +268,21 @@ export const SIL_NAMES: Record<string, string> = {
   fisher: 'Каменный рыбак', alban: 'Альбан', monk: 'Пепельный монах', seraph: 'Стеклянный серафим', reaper: 'Жнец Хора', choirmaster: 'Хормейстер Оттон', gatekeeper: 'Привратник', tide: 'Мать Приливов',
 };
 
-/** Подставляет направление света в shape() через обёртку. */
-function frame(d: Def, ph: number, blink: boolean): HTMLCanvasElement {
-  const p = new Pix(d.w, d.h, 'flat', d.rim);
-  const orig = p.shape.bind(p);
-  p.shape = (path: Path, mat, bb, dir) => orig(path, mat, bb, dir ?? d.dir);
-  d.draw(p, ph, blink);
-  return p.finish();
+/** Живая отрисовка: каждый кадр заново, холст переиспользуется. Фаза непрерывная, поэтому подол, огонь и фонарь движутся плавно. */
+const pool = new Map<string, Pix>();
+function live(id: string, d: Def, t: number, phase: number): HTMLCanvasElement {
+  const key = `${id}:${phase}`;
+  let p = pool.get(key);
+  if (!p) {
+    p = new Pix(d.w, d.h, 'flat', d.rim, 2);
+    const orig = p.shape.bind(p);
+    p.shape = (path: Path, mat, bb, dir) => orig(path, mat, bb, dir ?? d.dir);
+    pool.set(key, p);
+  }
+  p.reset();
+  const blink = ((t + phase * 0.37) % 4.2) > 4.05;
+  d.draw(p, t * 1.25 + phase * 1.7, blink);
+  return p.finishSoft();
 }
 
 const cache = new Map<string, Sprite>();
@@ -282,8 +290,8 @@ export function silSprite(id: string): Sprite {
   const hit = cache.get(id);
   if (hit) return hit;
   const d = DEFS[id] ?? DEFS.reaper;
-  const frames = [0, 1, 2, 3].map((f) => frame(d, f, false));
-  const s: Sprite = { id, ax: d.w / 2 + 1, w: frames[0].width, h: frames[0].height, frames, blink: frame(d, 0, true) };
+  const dummy = document.createElement('canvas');
+  const s: Sprite = { id, ax: d.w / 2 + 1, w: d.w + 2, h: d.h + 2, frames: [dummy], blink: dummy, k: 2, live: (t, ph) => live(id, d, t, ph) };
   cache.set(id, s);
   return s;
 }

@@ -75,6 +75,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   /* ───── рисование арены ───── */
   const rain = Array.from({ length: reduce ? 0 : 60 }, (_, i) => ({ x: (i * 53) % IW, y: (i * 97) % 270, v: 1.5 + (i % 5) * 0.4 }));
   let raf = 0;
+  let lastMs = 0;
   const frame = (ms: number) => {
     const t = ms / 1000;
     const x = cv.getContext('2d')!;
@@ -86,9 +87,10 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     const shadow = (cx: number, w: number) => x.fillRect(Math.round(cx - w / 2), FEET - 1, Math.round(w), 4);
     shadow(heroX, 54);
     for (const e of combat.enemies) shadow(posX.get(e.uid) ?? 0, 22 + spr(e).w * sc(e) * 0.3);
-    for (const a of [heroAnim, ...anim.values()]) { a.shake *= 0.85; a.lunge *= 0.88; }
+    const dt = Math.min(2, (ms - (lastMs || ms)) / 16.7); lastMs = ms;
+    for (const a of [heroAnim, ...anim.values()]) { a.shake *= Math.pow(0.85, dt); a.lunge *= Math.pow(0.9, dt); }
     const ha = heroAnim;
-    drawSprite(x, sprite(heroId), heroX + Math.sin(ha.shake * 6) * ha.shake, FEET + 3, 1, t, false, 0);
+    drawSprite(x, sprite(heroId), heroX + Math.sin(ha.shake * 6) * ha.shake - ha.lunge * 16, FEET + 3, 1, t, false, 0);
     combat.enemies.forEach((e, i) => {
       const a = anim.get(e.uid)!;
       const v = view.e.get(e.uid);
@@ -324,7 +326,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     try { combat.play(uid, target); } catch (err) { console.error(err); }
     const evs = combat.events.slice(before);
     audio.sfx(d.type === 'strike' ? 'strike' : d.type === 'ward' ? 'ward' : 'rite');
-    if (d.type === 'strike') heroAnim.lunge = -1.2;
+    if (d.type === 'strike') heroAnim.lunge = -1;
     await replay(evs, 70);
     busy = false;
     syncView();

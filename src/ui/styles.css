@@ -286,3 +286,6 @@ h1, h2, h3, .btn, .title-l, .banner, .end-turn, .tab, .intent, .float, .kicker, 
 .sig, .chip, .pile, .icon-btn, .tab, .st, .intent, .shield, .relic { box-shadow: 0 0 0 1px #4a4a58 !important; }
 .bar { box-shadow: 0 0 0 1px #000 !important; }
 .orb { box-shadow: 0 0 0 2px #000 !important; }
+
+/* мягкие пиксели: сцена масштабируется со сглаживанием */
+.bgc { image-rendering: auto; }
