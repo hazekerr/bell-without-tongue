@@ -410,11 +410,11 @@ export const SIL_NAMES: Record<string, string> = {
 
 /** Живая отрисовка: каждый кадр заново, холст переиспользуется. Фаза непрерывная, поэтому подол, огонь и фонарь движутся плавно. */
 const pool = new Map<string, Pix>();
-function live(id: string, d: Def, t: number, phase: number): HTMLCanvasElement {
-  const key = `${id}:${phase}`;
+function live(id: string, d: Def, t: number, phase: number, S = 2): HTMLCanvasElement {
+  const key = `${id}:${phase}:${S}`;
   let p = pool.get(key);
   if (!p) {
-    p = new Pix(d.w, d.h, 'flat', d.rim, 2);
+    p = new Pix(d.w, d.h, 'flat', d.rim, S);
     const orig = p.shape.bind(p);
     p.shape = (path: Path, mat, bb, dir) => orig(path, mat, bb, dir ?? d.dir);
     pool.set(key, p);
@@ -431,7 +431,7 @@ export function silSprite(id: string): Sprite {
   if (hit) return hit;
   const d = DEFS[id] ?? DEFS.reaper;
   const dummy = document.createElement('canvas');
-  const s: Sprite = { id, ax: d.w / 2 + 1, w: d.w + 2, h: d.h + 2, frames: [dummy], blink: dummy, k: 2, live: (t, ph) => live(id, d, t, ph) };
+  const s: Sprite = { id, ax: d.w / 2 + 1, w: d.w + 2, h: d.h + 2, frames: [dummy], blink: dummy, k: 2, live: (t, ph, S) => live(id, d, t, ph, S) };
   cache.set(id, s);
   return s;
 }

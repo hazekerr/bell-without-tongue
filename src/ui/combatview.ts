@@ -37,7 +37,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   cv.className = 'bgc';
   let kUp = 0;
   const fitUp = () => {
-    const k = Math.max(2, Math.min(6, Math.ceil(((stage().clientHeight || 390) * (window.devicePixelRatio || 1)) / 270)));
+    const k = Math.max(2, Math.min(4, Math.ceil(((stage().clientHeight || 390) * (window.devicePixelRatio || 1)) / 270)));
     if (k !== kUp) { kUp = k; cv.width = IW * k; cv.height = 270 * k; }
   };
   fitUp();
@@ -99,29 +99,6 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     for (const e of combat.enemies) shadow(posX.get(e.uid) ?? 0, 22 + spr(e).w * sc(e) * 0.3);
     const dt = Math.min(2, (ms - (lastMs || ms)) / 16.7); lastMs = ms;
     for (const a of [heroAnim, ...anim.values()]) { a.shake *= Math.pow(0.85, dt); a.lunge *= Math.pow(0.9, dt); }
-    const ha = heroAnim;
-    // мягкая подсветка за силуэтами: чёрная форма читается на фоне
-    const glow = (cx: number, h: number, warm: boolean) => {
-      const g = x.createRadialGradient(cx, FEET - h * 0.5, 4, cx, FEET - h * 0.5, h * 0.95);
-      g.addColorStop(0, warm ? 'rgba(232,169,74,.34)' : 'rgba(170,205,215,.42)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      x.globalCompositeOperation = 'lighter'; x.fillStyle = g;
-      x.fillRect(cx - h, FEET - h * 1.6, h * 2, h * 1.8);
-      x.globalCompositeOperation = 'source-over';
-    };
-    glow(heroX, 80, true);
-    for (const e of combat.enemies) if (e.alive) glow(posX.get(e.uid) ?? 0, 60 + spr(e).h * sc(e) * 0.4, false);
-    drawSprite(x, sprite(heroId), heroX + Math.sin(ha.shake * 6) * ha.shake - ha.lunge * 16, FEET + 3, 1, t, false, 0);
-    combat.enemies.forEach((e, i) => {
-      const a = anim.get(e.uid)!;
-      const v = view.e.get(e.uid);
-      if (v?.dead) a.alpha = Math.max(0, a.alpha - 0.025); else a.alpha = 1;
-      if (a.alpha <= 0) return;
-      x.globalAlpha = a.alpha;
-      const ox = (posX.get(e.uid) ?? 0) - a.lunge * 22 + Math.sin(a.shake * 6) * a.shake;
-      drawSprite(x, spr(e), ox, FEET + 3, sc(e), t, false, i + 1);
-      x.globalAlpha = 1;
-    });
     // дождь или пепел
     x.fillStyle = opts.circle >= 3 ? 'rgba(214,236,255,.7)' : opts.circle >= 2 ? 'rgba(210,200,185,.5)' : 'rgba(200,215,225,.4)';
     for (const r of rain) {
@@ -134,6 +111,32 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
     const vx = cv.getContext('2d')!;
     vx.imageSmoothingEnabled = false;
     vx.drawImage(off, 0, 0, cv.width, cv.height);
+    // персонажи рисуются сразу в экранном разрешении: контур остаётся чётким
+    vx.save(); vx.setTransform(kUp, 0, 0, kUp, 0, 0);
+    const ha = heroAnim;
+    // мягкая подсветка за силуэтами: чёрная форма читается на фоне
+    const glow = (cx: number, h: number, warm: boolean) => {
+      const g = vx.createRadialGradient(cx, FEET - h * 0.5, 4, cx, FEET - h * 0.5, h * 0.95);
+      g.addColorStop(0, warm ? 'rgba(232,169,74,.34)' : 'rgba(170,205,215,.42)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      vx.globalCompositeOperation = 'lighter'; vx.fillStyle = g;
+      vx.fillRect(cx - h, FEET - h * 1.6, h * 2, h * 1.8);
+      vx.globalCompositeOperation = 'source-over';
+    };
+    glow(heroX, 80, true);
+    for (const e of combat.enemies) if (e.alive) glow(posX.get(e.uid) ?? 0, 60 + spr(e).h * sc(e) * 0.4, false);
+    drawSprite(vx, sprite(heroId), heroX + Math.sin(ha.shake * 6) * ha.shake - ha.lunge * 16, FEET + 3, 1, t, false, 0, kUp);
+    combat.enemies.forEach((e, i) => {
+      const a = anim.get(e.uid)!;
+      const v = view.e.get(e.uid);
+      if (v?.dead) a.alpha = Math.max(0, a.alpha - 0.025); else a.alpha = 1;
+      if (a.alpha <= 0) return;
+      vx.globalAlpha = a.alpha;
+      const ox = (posX.get(e.uid) ?? 0) - a.lunge * 22 + Math.sin(a.shake * 6) * a.shake;
+      drawSprite(vx, spr(e), ox, FEET + 3, sc(e), t, false, i + 1, kUp);
+      vx.globalAlpha = 1;
+    });
+    vx.restore();
     raf = requestAnimationFrame(frame);
   };
 

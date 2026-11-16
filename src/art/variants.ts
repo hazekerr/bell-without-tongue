@@ -44,7 +44,7 @@ export class Pix {
   private out?: HTMLCanvasElement;
   /** Мягкий финиш: без пороговой обрезки, тонкий тёмный контур со сглаживанием. Холст получает отступ по 2 пикселя. */
   finishSoft(): HTMLCanvasElement {
-    const W = this.c.width + 4, H = this.c.height + 4;
+    const pad = this.S, W = this.c.width + pad * 2, H = this.c.height + pad * 2, u = this.S / 2;
     if (!this.tint) { this.tint = document.createElement('canvas'); this.out = document.createElement('canvas'); }
     const t = this.tint, o = this.out!;
     t.width = this.c.width; t.height = this.c.height; o.width = W; o.height = H;
@@ -52,8 +52,8 @@ export class Pix {
     tc.globalCompositeOperation = 'source-over'; tc.drawImage(this.c, 0, 0);
     tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#05060a'; tc.fillRect(0, 0, t.width, t.height);
     const oc = o.getContext('2d')!;
-    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]]) oc.drawImage(t, 2 + dx * 1.1, 2 + dy * 1.1);
-    oc.drawImage(this.c, 2, 2);
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]]) oc.drawImage(t, pad + dx * 1.1 * u, pad + dy * 1.1 * u);
+    oc.drawImage(this.c, pad, pad);
     return o;
   }
   /** Фигура с тремя тонами. Свет приходит справа (dir=1) или слева (dir=-1). */

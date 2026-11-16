@@ -51,7 +51,7 @@ export interface Sprite {
   frames: HTMLCanvasElement[];
   blink: HTMLCanvasElement;
   /** Живая отрисовка каждый кадр (для плавной анимации): время и сдвиг фазы → холст. */
-  live?: (t: number, phase: number) => HTMLCanvasElement;
+  live?: (t: number, phase: number, S?: number) => HTMLCanvasElement;
   /** Сколько пикселей холста приходится на один дизайн-пиксель (для живых спрайтов 2). */
   k?: number;
 }
@@ -207,10 +207,10 @@ export function makeSprite(def: SpriteDef): Sprite {
 }
 
 /** Рисует спрайт по нижнему центру. t — время в секундах. Живые спрайты рисуются каждый кадр и слегка дышат и покачиваются. */
-export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number, by: number, scale = 1, t = 0, flip = false, phase = 0) {
+export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number, by: number, scale = 1, t = 0, flip = false, phase = 0, res = 2) {
   if (s.live) {
-    const img = s.live(t, phase);
-    const k = s.k ?? 2;
+    const img = s.live(t, phase, res);
+    const k = res;
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
