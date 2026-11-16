@@ -28,6 +28,7 @@ export interface RunStats {
   turns: number;
   chords: number;
   damageTaken: number;
+  rests?: number;
 }
 
 export interface RunState {
@@ -53,6 +54,8 @@ export interface RunState {
   bodiesSeen: number;
   /** Идёт ли сейчас узел (для автосохранения): id узла. */
   active: string | null;
+  /** Заказ, взятый перед забегом. */
+  commission?: { id: string; state: 'active' | 'done' | 'failed' };
   /** Для продолжения: состояние ГСЧ и счётчики до входа в узел. */
   resume?: { rng: number; enc: number; ev: number };
   startedAt: number;
@@ -139,18 +142,19 @@ export function available(run: RunState): MapNode[] {
 }
 
 /* ───────── старт забега ───────── */
-export function startRun(chron: Chronicle, role: RoleId, seed = `${Date.now()}-${Math.random()}`): RunState {
+export function startRun(chron: Chronicle, role: RoleId, seed = `${Date.now()}-${Math.random()}`, commission?: string): RunState {
   const rng = Rng.fromSeed(seed);
   let uid = 1;
   const deck: CardInst[] = BASIC_DECKS[role].map((id) => ({ uid: uid++, id, up: false }));
   const run: RunState = {
     seed, role, circle: 1, map: [], at: null, hp: ROLE_INFO[role].hp, maxHp: ROLE_INFO[role].hp, gold: 99,
     deck, relics: [], uid, rng: rng.state, mercy: chron.settings.mercy,
-    stats: { nodes: 0, combats: 0, elites: 0, turns: 0, chords: 0, damageTaken: 0 }, pagesThisRun: [],
+    stats: { nodes: 0, combats: 0, elites: 0, turns: 0, chords: 0, damageTaken: 0, rests: 0 }, pagesThisRun: [],
     seenEncounters: [], seenEvents: [], removals: 0, bodiesSeen: 0, active: null, startedAt: Date.now(),
   };
   run.map = generateMap(rng, 1, chron.bodies.length > 0);
   run.rng = rng.state;
+  if (commission) run.commission = { id: commission, state: 'active' };
   return run;
 }
 

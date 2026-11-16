@@ -178,3 +178,43 @@ describe('события в каждом Круге', () => {
     }
   });
 });
+
+describe('Заказы', () => {
+  it('заказчики с неизвестным именем не предлагают заказ', async () => {
+    const { offerCommissions } = await import('../src/engine/commissions.ts');
+    const chron = newChronicle();
+    for (let s = 1; s < 40; s++) for (const c of offerCommissions(chron, new Rng(s))) expect(c.needsName).toBeUndefined();
+    chron.names.push('Тин', 'Гаспар');
+    const seen = new Set<string>();
+    for (let s = 1; s < 200; s++) for (const c of offerCommissions(chron, new Rng(s))) seen.add(c.id);
+    expect(seen.has('choir_practice')).toBe(true);
+    expect(seen.has('gold_miser')).toBe(true);
+  });
+
+  it('выполняется один раз; провал не даёт награды', async () => {
+    const { checkCommission } = await import('../src/engine/commissions.ts');
+    const chron = newChronicle();
+    const run = startRun(chron, 'gravedigger', 'cm1', 'elite_hunt');
+    expect(checkCommission(run)).toBeNull();
+    run.stats.elites = 1;
+    expect(checkCommission(run)?.id).toBe('elite_hunt');
+    expect(checkCommission(run)).toBeNull();
+
+    const r2 = startRun(chron, 'gravedigger', 'cm2', 'light_sleeper');
+    r2.stats.rests = 1;
+    expect(checkCommission(r2)).toBeNull();
+    expect(r2.commission?.state).toBe('failed');
+    r2.circle = 2;
+    expect(checkCommission(r2)).toBeNull();
+  });
+
+  it('«Налегке» проверяется на входе во второй Круг', async () => {
+    const { checkCommission } = await import('../src/engine/commissions.ts');
+    const chron = newChronicle();
+    const run = startRun(chron, 'gravedigger', 'cm3', 'light_pack');
+    run.circle = 2;
+    run.deck.push({ uid: 999, id: 'strike', up: false }, { uid: 998, id: 'strike', up: false }, { uid: 997, id: 'strike', up: false });
+    expect(checkCommission(run)).toBeNull();
+    expect(run.commission?.state).toBe('failed');
+  });
+});

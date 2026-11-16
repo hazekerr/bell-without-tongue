@@ -5,10 +5,11 @@ import { RELICS } from '../engine/relics.ts';
 import { Rng } from '../engine/rng.ts';
 import { type PageGrant, cardEnabled, exportChronicle, grantPage, importChronicle, isCardUnlocked, newChronicle, tryGrantPage, unlockRole } from '../engine/chronicle.ts';
 import {
-  type MapNode, type ReturnReport, FLOORS, MAX_CIRCLE, addCard, addRelic, available, bodyPage, finishCombat, genShop, nextCircle, nodeById, onDeath,
+  type MapNode, type ReturnReport, FLOORS, MAX_CIRCLE, addCard, addRelic, available, bodyPage, cardChoices, finishCombat, pickRelic, genShop, nextCircle, nodeById, onDeath,
   onVictory, removable, restHeal, rngOf, saveRng, startCombat, startRun, upgradeable,
 } from '../engine/run.ts';
 import { pickEvent } from '../engine/events.ts';
+import { COMMISSION_BY_ID, checkCommission, offerCommissions, type CommissionDef } from '../engine/commissions.ts';
 import { PAGES, PAGE_LIST, NAMES } from '../content/pages.ts';
 import { HUB_TALKS, type HubTalk } from '../content/hub.ts';
 import { audio } from './audio.ts';
@@ -183,13 +184,30 @@ function openRolePick() {
     const sp = sprite(r === 'wickkeeper' ? 'wickkeeper' : r === 'bellringer' ? 'bellringer' : r === 'penitent' ? 'penitent' : 'gravedigger');
     drawSprite(x, sp, 32, 62, Math.min(1, 56 / sp.h), 0, false, 0);
     const card = h('button', { class: `role-card${open ? '' : ' locked'}` }, cvs, h('h3', null, info.name), h('div', { class: 'tag' }, info.tagline), h('p', null, open ? info.blurb : 'Откроется по ходу истории.'), open ? h('p', { style: { color: 'var(--amber)' } }, info.chord) : h('div'), open ? h('div', { class: 'sub', style: { fontSize: '12px' } }, `ЗДР ${info.hp} · 10 карт · 3 Дыхания`) : h('div'));
-    if (open) card.addEventListener('click', () => { audio.sfx('tap'); s.close(); void beginRun(r); });
+    if (open) card.addEventListener('click', () => { audio.sfx('tap'); s.close(); pickCommission(r); });
     row.append(card);
   }
 }
 
-async function beginRun(role: 'gravedigger' | 'wickkeeper' | 'bellringer' | 'penitent') {
-  G.run = startRun(G.chron, role);
+type RoleKey = 'gravedigger' | 'wickkeeper' | 'bellringer' | 'penitent';
+
+/** Заказ перед забегом: три предложения от жителей Сальвена. */
+function pickCommission(role: RoleKey) {
+  const offers = offerCommissions(G.chron, new Rng(Math.floor(Math.random() * 2 ** 31)));
+  const list = h('div', { class: 'stack' });
+  const s = sheet([h('div', { class: 'row', style: { alignItems: 'center' } }, h('h2', { class: 'title-l', style: { flex: 3 } }, 'Заказ на спуск'), btn('Назад', 'ghost', () => { s.close(); openRolePick(); })), h('p', { class: 'sub', style: { fontSize: '14px' } }, 'Необязательно. Награда разовая и только для этого забега: страница истории и немного удачи.'), list, btn('Без заказа', 'ghost', () => { s.close(); void beginRun(role); })], { cls: 'wide', closable: false });
+  for (const c of offers) list.append(commissionRow(c, () => { s.close(); void beginRun(role, c.id); }));
+}
+function commissionRow(c: CommissionDef, on: () => void) {
+  const r = c.reward;
+  const rw = [r.relic ? 'реликвия' : '', r.gold ? `${r.gold} монет` : '', r.heal ? (r.heal === 'full' ? 'полное исцеление' : `исцеление ${r.heal}`) : '', r.rarePick ? 'выбор редкой карты' : '', 'страница'].filter(Boolean).join(', ');
+  const b = h('button', { class: 'opt' }, h('b', { style: { color: 'var(--amber)', fontFamily: 'var(--ps)', fontWeight: 400, fontSize: '10px' } }, `${c.giver.toUpperCase()}: ${c.title}`), h('small', { style: { color: 'var(--bone)' } }, `${c.goal}`), h('small', null, `«${c.line}»`), h('small', { style: { color: 'var(--amber)' } }, `Награда: ${rw}.`));
+  b.addEventListener('click', () => { audio.sfx('tap'); on(); });
+  return b;
+}
+
+async function beginRun(role: RoleKey, commission?: string) {
+  G.run = startRun(G.chron, role, undefined, commission);
   save();
   audio.sfx('bell');
   mount(h('div', { class: 'screen', style: { background: '#000' } }));
@@ -244,13 +262,42 @@ export function showMap() {
   }
   const deckBtn = h('button', { class: 'chip' }, `Колода ${run.deck.length}`);
   deckBtn.addEventListener('click', () => showDeck());
+  const cdef = run.commission ? COMMISSION_BY_ID[run.commission.id] : undefined;
+  const cchip = cdef ? h('button', { class: 'chip', style: { color: run.commission!.state === 'done' ? '#9ee0a0' : run.commission!.state === 'failed' ? '#8a6f5a' : 'var(--amber)' } }, `${run.commission!.state === 'done' ? '✓ ' : run.commission!.state === 'failed' ? '✗ ' : ''}Заказ: ${cdef.title}`) : h('span');
+  cchip.addEventListener('click', () => { if (cdef) inspect(`${cdef.giver}: ${cdef.title}`, `${cdef.goal}\n\n«${cdef.line}»\n\n${run.commission!.state === 'failed' ? 'Заказ провален.' : run.commission!.state === 'done' ? 'Заказ выполнен.' : 'Заказ в процессе.'}`); });
   s.root.append(
-    h('div', { class: 'top' }, h('b', { class: 'kicker', style: { fontSize: '13px' } }, CIRCLE_NAME[run.circle]), h('span', { class: 'sub', style: { fontSize: '12px' } }, `${ROLE_INFO[run.role].name} · ${run.stats.nodes} шагов`), h('div', { class: 'grow' }), h('span', { class: 'chip hp' }, `ЗДР ${run.hp}/${run.maxHp}`), h('span', { class: 'chip gold' }, `${run.gold}`), deckBtn),
+    h('div', { class: 'top' }, h('b', { class: 'kicker', style: { fontSize: '13px' } }, CIRCLE_NAME[run.circle]), h('span', { class: 'sub', style: { fontSize: '12px' } }, `${ROLE_INFO[run.role].name} · ${run.stats.nodes} шагов`), h('div', { class: 'grow' }), cchip, h('span', { class: 'chip hp' }, `ЗДР ${run.hp}/${run.maxHp}`), h('span', { class: 'chip gold' }, `${run.gold}`), deckBtn),
     wrap,
     h('div', { class: 'maptip' }, h('div', { class: 'rel' }, run.relics.map((r) => relicChip(r))), h('span', { class: 'hint-t' }, 'Спуск идёт вправо. Глубже: Страж Круга.')),
   );
   s.mount();
   requestAnimationFrame(() => { wrap.scrollLeft = Math.max(0, focusX - wrap.clientWidth * 0.4); });
+  void claimCommission();
+}
+
+/** Награда за выполненный заказ. Разовая, без постоянной силы. */
+async function claimCommission() {
+  const run = G.run;
+  if (!run) return;
+  const def = checkCommission(run);
+  if (!def) return;
+  save();
+  audio.sfx('reward');
+  const r = def.reward;
+  const lines: string[] = [];
+  const rng = rngOf(run);
+  if (r.gold) { run.gold += r.gold; lines.push(`+${r.gold} монет`); }
+  if (r.heal) { const before = run.hp; run.hp = r.heal === 'full' ? run.maxHp : Math.min(run.maxHp, run.hp + r.heal); if (run.hp > before) lines.push(`исцелено ${run.hp - before}`); }
+  if (r.relic) { const id = pickRelic(run, r.relic, rng); if (id) { addRelic(run, id); lines.push(`реликвия: ${RELICS[id].name}`); } }
+  const pickIds = r.rarePick ? cardChoices(run, G.chron, 'elite', rng, 3) : null;
+  saveRng(run, rng);
+  toast(`Заказ выполнен: ${def.title}`, lines.join(', ') || 'Награда — страница.');
+  const g = tryGrantPage(G.chron, r.page);
+  save();
+  if (g?.isNew) await pageReveal(g);
+  if (pickIds) { const pick = await pickCard(pickIds, 'Награда за заказ', 'Отказаться', G.chron.fresh); if (pick) addCard(run, pick); }
+  save();
+  showMap();
 }
 
 function showDeck() {
@@ -278,6 +325,7 @@ async function enterNode(node: MapNode) {
 function closeNode(node: MapNode) {
   const run = G.run!;
   run.active = null; run.at = node.id; run.stats.nodes++;
+  if (node.type === 'rest') run.stats.rests = (run.stats.rests ?? 0) + 1;
   save();
 }
 

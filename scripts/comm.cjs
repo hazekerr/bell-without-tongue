@@ -1,0 +1,21 @@
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch();
+  const p = await (await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true })).newPage();
+  const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+  await p.goto('http://127.0.0.1:5173/?debug', { waitUntil: 'networkidle' });
+  await p.evaluate(() => { const w = window.__bwt; const c = w.G.chron; c.prologueDone = true; c.names.push('Мёрк', 'Ильзе', 'Тин', 'Гаспар'); c.roles.push('bellringer', 'penitent'); w.showHub(); w.openRolePick(); });
+  await p.waitForTimeout(600);
+  await p.screenshot({ path: '/tmp/claude-0/shots/K1-roles.png' });
+  await p.$eval('.role-card:not(.locked)', (e) => e.click());
+  await p.waitForTimeout(600);
+  await p.screenshot({ path: '/tmp/claude-0/shots/K2-commission.png' });
+  await p.$eval('.sheet .opt', (e) => e.click());
+  await p.waitForTimeout(1500);
+  await p.$eval('.dialog', (e) => e.click()).catch(() => {});
+  await p.waitForTimeout(800);
+  await p.$eval('.dialog', (e) => e.click()).catch(() => {});
+  await p.waitForTimeout(1200);
+  await p.screenshot({ path: '/tmp/claude-0/shots/K3-map.png' });
+  console.log(errs.join('\n') || 'no errors'); await b.close();
+})();
