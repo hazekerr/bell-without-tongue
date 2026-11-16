@@ -270,7 +270,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   const renderPreview = () => {
     clear(preview);
     const c = selUid !== null ? combat.hand.find((x) => x.uid === selUid) : undefined;
-    if (!c) { hintEl.textContent = combat.phase === 'hero' ? 'Нажми карту. Разные типы за ход собирают Аккорд.' : ''; return; }
+    if (!c) { hintEl.textContent = combat.phase === 'hero' && combat.turn <= 2 && combat.chordsThisCombat === 0 && !G.chron.tolls ? 'Сыграй Удар, Оберег и Обряд за один ход: это Аккорд.' : ''; return; }
     preview.append(cardEl(c.id, { up: c.up, scale: 1.5, costNow: combat.cost(c), returned: c.returned, flavor: true }));
     const d = CARDS[c.id];
     hintEl.textContent = !combat.canPlay(c.uid)
