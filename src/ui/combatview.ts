@@ -37,7 +37,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   cv.className = 'bgc';
   let kUp = 0;
   const fitUp = () => {
-    const k = Math.max(2, Math.min(4, Math.ceil(((stage().clientHeight || 390) * (window.devicePixelRatio || 1)) / 270)));
+    const k = Math.max(2, Math.min(4, Math.ceil((stage().getBoundingClientRect().height * (window.devicePixelRatio || 1)) / 270)));
     if (k !== kUp) { kUp = k; cv.width = IW * k; cv.height = 270 * k; }
   };
   fitUp();

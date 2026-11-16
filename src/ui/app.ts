@@ -15,6 +15,7 @@ import { HUB_TALKS, type HubTalk } from '../content/hub.ts';
 import { audio } from './audio.ts';
 import { bannerArt, drawSprite, eventKey, fogTexture, iconArt, sceneCanvas, sprite, type SceneKind } from '../art/index.ts';
 import { cardEl } from './cardview.ts';
+import { figureLayer, heroArt, type Fig } from './figures.ts';
 import { buildCombat } from './combatview.ts';
 import { clear, h, sleep } from './dom.ts';
 import { NODE_ICON, NODE_LABEL, svgIcon } from './icons.ts';
@@ -379,12 +380,21 @@ async function afterBattle(node: MapNode) {
 }
 
 /* ───────────────── Событие ───────────────── */
-function splitScreen(art: string, tone: 'r' | 's' | 'w' | 'd' | 'g' | 'k' = 'r') {
-  const cvs = cloneCanvas(bannerArt(eventKey(art), 192, 160, tone as never));
-  const s = scene('event', 'hub', 'none');
-  s.root.querySelector('canvas')!.style.display = 'none';
+const EVENT_NPC: Record<string, { id: string; scale?: number; flip?: boolean }> = {
+  tin: { id: 'candle', scale: 0.9 }, lender: { id: 'monk' }, shrine: { id: 'seraph', scale: 0.8 }, grave: { id: 'shade' }, mirror: { id: 'shade', flip: true }, cart: { id: 'mussel' }, rest: { id: 'candle', scale: 1.5 },
+};
+/** Экран узла: сцена Круга на весь экран, герой слева, участник события рядом, текст в рамке справа. */
+function splitScreen(art: string, _tone: 'r' | 's' | 'w' | 'd' | 'g' | 'k' = 'r') {
+  const circle = Math.min(3, G.run?.circle ?? 1);
+  const s = scene('event', `c${circle}` as SceneKind, circle === 1 ? 'rain' : 'embers');
+  const figs: Fig[] = [{ id: heroArt(G.run?.role ?? 'gravedigger'), x: 0.14, warm: true }];
+  const npc = EVENT_NPC[art];
+  if (npc) figs.push({ id: npc.id, x: 0.34, scale: npc.scale, flip: npc.flip ?? true });
+  const fl = figureLayer(figs, 154, G.chron.settings.reduceMotion);
   const body = h('div', { class: 'split-body' });
-  s.root.append(h('div', { class: 'split-art' }, cvs), body);
+  s.root.append(fl.el, body);
+  const m = s.mount;
+  s.mount = () => { m(); fl.start(); };
   return { s, body };
 }
 
@@ -510,13 +520,20 @@ async function victory() {
   audio.play('victory'); audio.sfx('win');
   const gs = onVictory(run, G.chron);
   clearRun(); save();
-  const s = scene('hub', 'hub', 'embers', 'l');
-  s.root.append(h('div', { class: 'center-col', style: { alignItems: 'flex-start', paddingLeft: '8%', width: '62%' } },
-    h('h2', { class: 'title-l', style: { fontSize: '16px' } }, 'НИСХОЖДЕНИЕ ПРОДОЛЖАЕТСЯ'),
-    h('p', { class: 'sub', style: { fontSize: '17px' } }, 'Хормейстер молчит. Где-то глубже кто-то зовёт тебя по имени, которого ты не помнишь.'),
-    h('div', { class: 'autopsy', style: { width: '100%' } }, stat('Бои', String(run.stats.combats)), stat('Аккорды', String(run.stats.chords)), stat('Монеты', String(run.gold)), stat('Колода', String(run.deck.length))),
-    h('div', { style: { width: '260px' } }, btn('Вернуться в Сальвен', 'primary', () => { void showHub({ talk: true }); })),
-    h('div', { class: 'hint-t' }, 'Конец среза. Круги IV–VII и финал впереди.')));
+  const s = scene('victory', 'c3', 'embers');
+  const fl = figureLayer([
+    { id: heroArt(run.role), x: 0.15, warm: true, scale: 1 },
+    { id: 'choirmaster', x: 0.37, flip: true, scale: 0.8 },
+  ], 154, G.chron.settings.reduceMotion);
+  s.root.append(fl.el,
+    h('div', { class: 'banner-big' }, h('span', null, 'КРУГ III ПРОЙДЕН'), h('small', null, 'НИСХОЖДЕНИЕ ПРОДОЛЖАЕТСЯ')),
+    h('div', { class: 'split-body' },
+      h('h2', null, 'Хормейстер молчит'),
+      h('div', { class: 'ev-text' }, h('p', null, 'Хормейстер опускает руки. Где-то глубже кто-то зовёт тебя по имени, которого ты не помнишь.')),
+      h('div', { class: 'autopsy' }, stat('Бои', String(run.stats.combats)), stat('Аккорды', String(run.stats.chords)), stat('Монеты', String(run.gold)), stat('Колода', String(run.deck.length))),
+      btn('Вернуться в Сальвен', 'primary', () => { void showHub({ talk: true }); }),
+      h('div', { class: 'hint-t' }, 'Конец среза. Круги IV–VII и финал впереди.')));
+  { const m = s.mount; s.mount = () => { m(); fl.start(); }; }
   s.mount();
   await sleep(400);
   await pageReveals(gs);
@@ -684,7 +701,7 @@ export function boot() {
   applySettings();
   G.run = loadRun();
   if (new URLSearchParams(location.search).has('debug')) {
-    (window as unknown as Record<string, unknown>).__bwt = { G, showHub, showMap, showTitle, grantPage, unlockRole, save, openRolePick, beginRun, rngOf, saveRng, cardEnabled, openChronicle, openLibrary, doCombat, returnSequence, onDeath, startRun, sprite, nextCircle };
+    (window as unknown as Record<string, unknown>).__bwt = { G, showHub, showMap, showTitle, grantPage, unlockRole, save, openRolePick, beginRun, rngOf, saveRng, cardEnabled, openChronicle, openLibrary, doCombat, returnSequence, onDeath, startRun, sprite, nextCircle, victory };
   }
   showTitle();
   const unlock = () => { audio.unlock(); window.removeEventListener('pointerdown', unlock); };
