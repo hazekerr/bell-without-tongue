@@ -22,7 +22,7 @@ interface Anim { shake: number; lunge: number; alpha: number }
 const HAND_SCALE = 0.76;
 const SPRITE_SCALE: Record<string, number> = { tide: 0.72, choirmaster: 0.78, gatekeeper: 0.8, alban: 0.92, reaper: 0.92, seraph: 0.9, fisher: 0.92 };
 const FEET = 154; // нижняя точка спрайтов во внутренних координатах (высота сцены 270)
-const KIND: Record<number, 'c1' | 'c2'> = { 1: 'c1', 2: 'c2', 3: 'c2' };
+const KIND: Record<number, 'c1' | 'c2' | 'c3'> = { 1: 'c1', 2: 'c2', 3: 'c3' };
 
 export function buildCombat(combat: Combat, opts: { circle: number; boss: boolean; onInspect: (title: string, text: string) => void; onPiles: (kind: 'draw' | 'discard' | 'grave' | 'exhaust') => void }): CombatUI {
   const reduce = G.chron.settings.reduceMotion;
@@ -33,7 +33,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
   cv.width = IW; cv.height = 270; cv.className = 'bgc';
   const bg = sceneCanvas(KIND[opts.circle] ?? 'c2', IW);
   const fog = fogTexture(IW, 80);
-  const heroId = combat.role === 'wickkeeper' ? 'wickkeeper' : 'gravedigger';
+  const heroId = combat.role === 'wickkeeper' ? 'wickkeeper' : combat.role === 'bellringer' ? 'bellringer' : 'gravedigger';
 
   const hintEl = h('div', { class: 'hint' });
   const arena = h('div', { class: 'abs', style: { inset: '0', zIndex: 4 } });
@@ -102,7 +102,7 @@ export function buildCombat(combat: Combat, opts: { circle: number; boss: boolea
       x.globalAlpha = 1;
     });
     // дождь или пепел
-    x.fillStyle = opts.circle >= 2 ? 'rgba(210,200,185,.5)' : 'rgba(200,215,225,.4)';
+    x.fillStyle = opts.circle >= 3 ? 'rgba(214,236,255,.7)' : opts.circle >= 2 ? 'rgba(210,200,185,.5)' : 'rgba(200,215,225,.4)';
     for (const r of rain) {
       r.y += r.v; r.x -= opts.circle >= 2 ? 0.2 : 0.7;
       if (r.y > 270) { r.y = -4; r.x = Math.random() * IW; }

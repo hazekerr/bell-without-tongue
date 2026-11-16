@@ -63,7 +63,7 @@ const heal = (rt: Rt, n: number) => {
 
 export const EVENTS: EventDef[] = [
   {
-    id: 'tin_bell', circles: [1, 2], weight: 4,
+    id: 'tin_bell', circles: [1, 2, 3], weight: 4,
     build: (rt) => {
       const knows = rt.chron.names.includes('Тин');
       return {
@@ -108,7 +108,7 @@ export const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'moneylender', circles: [1, 2], weight: 3,
+    id: 'moneylender', circles: [1, 2, 3], weight: 3,
     build: (rt) => ({
       title: 'Гаспар Лом',
       art: 'lender',
@@ -134,7 +134,7 @@ export const EVENTS: EventDef[] = [
     }),
   },
   {
-    id: 'shrine', circles: [1, 2], weight: 3,
+    id: 'shrine', circles: [1, 2, 3], weight: 3,
     build: (rt) => ({
       title: 'Алтарь утопленников',
       art: 'shrine',
@@ -147,7 +147,7 @@ export const EVENTS: EventDef[] = [
     }),
   },
   {
-    id: 'scroll', circles: [1, 2], weight: 3,
+    id: 'scroll', circles: [1, 2, 3], weight: 3,
     build: (rt) => ({
       title: 'Свиток Хора',
       art: 'scroll',
@@ -160,7 +160,7 @@ export const EVENTS: EventDef[] = [
     }),
   },
   {
-    id: 'murk_grave', circles: [1, 2], weight: 2,
+    id: 'murk_grave', circles: [1, 2, 3], weight: 2,
     build: (rt) => ({
       title: 'Могила № 1198',
       art: 'grave',
@@ -173,7 +173,7 @@ export const EVENTS: EventDef[] = [
     }),
   },
   {
-    id: 'mirror_water', circles: [1, 2], weight: 2,
+    id: 'mirror_water', circles: [1, 2, 3], weight: 2,
     build: (rt) => ({
       title: 'Зеркальная вода',
       art: 'mirror',
@@ -186,7 +186,7 @@ export const EVENTS: EventDef[] = [
     }),
   },
   {
-    id: 'silt_cart', circles: [1, 2], weight: 2,
+    id: 'silt_cart', circles: [1, 2, 3], weight: 2,
     build: (rt) => ({
       title: 'Телега с хламом',
       art: 'cart',
@@ -203,7 +203,8 @@ export const EVENTS: EventDef[] = [
 export function pickEvent(run: RunState, chron: Chronicle): EventView {
   const rng = rngOf(run);
   const pool = EVENTS.filter((e) => e.circles.includes(run.circle) && !run.seenEvents.includes(e.id));
-  const list = pool.length ? pool : EVENTS.filter((e) => e.circles.includes(run.circle));
+  const all = EVENTS.filter((e) => e.circles.includes(run.circle));
+  const list = pool.length ? pool : all.length ? all : EVENTS;
   // события с именами чаще, если имя уже известно
   const e = rng.weighted(list, (x) => x.weight * (x.id === 'tin_bell' && chron.names.includes('Тин') ? 2.5 : 1));
   run.seenEvents.push(e.id);

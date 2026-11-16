@@ -245,6 +245,115 @@ const tide: Draw = (p, ph, bl) => {
   p.accent(ell(60, 23, 14, 8), 'rgba(224,255,248,.12)');
 };
 
+
+/* ───── Звонарь (герой): колокол за спиной, железный язык в руке ───── */
+const bellringer: Draw = (p, ph, bl) => {
+  p.shape(poly([[8, 12], [24, 12], [30, 40], [34, 52], [4, 52], [8, 40]]), [] as never, [4, 12, 34, 52]);
+  p.shape(poly([[22, 27], [40, 27], [45, 52], [49, 80], ...hem(49, 13, 80, 7, ph, 3, 0.9), [17, 52]]), [] as never, [13, 27, 49, 84]);
+  p.shape(ell(31, 21, 8, 8), [] as never, [23, 13, 39, 29]);
+  p.shape(poly([[21, 20], [31, 5], [41, 20], [42, 30], [20, 30]]), [] as never, [20, 5, 42, 30]);
+  p.shape(bar(38, 32, 48, 52, 5.4), [] as never, [36, 30, 52, 56]);
+  const sw = wob(ph, 1, 1.4);
+  p.shape(bar(48, 52, 54 + sw, 22, 2.6), [] as never, [46, 12, 60, 56]);
+  p.shape(ell(54 + sw, 17, 4.4, 5.4), [] as never, [49, 12, 60, 24]);
+  p.shape(bar(24, 32, 20, 54, 5), [] as never, [16, 30, 28, 58]);
+  p.shape(rect(22, 80, 30, 86), [] as never, [22, 80, 30, 86]); p.shape(rect(34, 80, 42, 86), [] as never, [34, 80, 42, 86]);
+  p.accent(bar(11, 20, 22, 52, 0.9), 'rgba(232,169,74,.65)');
+  p.accent(ell(18, 52, 12, 1.8), '#05060a');
+  p.accent(rect(33, 51, 35, 56), '#e8a94a');
+  eyes(p, bl, '#fff0c0', [[27, 20], [34, 20]]);
+  p.accent(poly([[29, 38], [33, 38], [34, 43], [28, 43]]), '#e8a94a');
+  p.accent(ell(54 + sw, 17, 6.5, 7.5), 'rgba(232,169,74,.13)');
+};
+
+/* ───── Тень хориста: поёт одну строчку ───── */
+const shade: Draw = (p, ph, bl) => {
+  const lean = wob(ph, 0, 1.2);
+  p.shape(poly([[20, 28], [32, 28], [40, 56], [44, 84], ...hem(44, 6, 84, 8, ph, 4, 2.4), [10, 56]]), [] as never, [6, 28, 44, 92]);
+  p.shape(ell(26 + lean, 18, 7.5, 9.5), [] as never, [18, 8, 34, 28]);
+  p.shape(bar(26, 28, 26 + lean, 22, 5), [] as never, [20, 20, 32, 30]);
+  p.shape(poly([[18, 12], [26 + lean, 4], [35, 12]]), [] as never, [16, 4, 36, 14]);
+  p.shape(bar(15, 40, 24, 54, 4), [] as never, [12, 38, 28, 56]); p.shape(bar(37, 40, 28, 54, 4), [] as never, [26, 38, 40, 56]);
+  p.accent(rect(20, 50, 33, 60), 'rgba(217,210,192,.9)'); for (let i = 0; i < 3; i++) p.accent(rect(21.5, 52 + i * 2.6, 31.5, 52.8 + i * 2.6), '#33343c');
+  const m = 1 + Math.sin(ph * 3.14) * 0.4;
+  p.accent(ell(26 + lean, 19, 3, 4 * m), '#bfe6ff');
+  eyes(p, bl, '#bfe6ff', [[22 + lean, 14], [28 + lean, 14]], 2, 2);
+  for (let k = 0; k < 3; k++) { p.x.strokeStyle = `rgba(191,230,255,${0.45 - k * 0.12})`; p.x.lineWidth = 1; p.x.beginPath(); p.x.arc(30 + lean, 19, 6 + k * 4 + ((ph * 3) % 4), -0.8, 0.8); p.x.stroke(); }
+};
+
+/* ───── Ледяной горгул ───── */
+const gargoyle: Draw = (p, ph, bl) => {
+  const fl = wob(ph, 0, 1.4);
+  p.shape(rect(18, 60, 62, 70), [] as never, [18, 60, 62, 70]);
+  for (const s of [-1, 1]) {
+    const X = (d: number) => 40 + s * d;
+    p.shape(poly([[X(8), 36], [X(26), 8 + fl], [X(40), 14 + fl], [X(34), 30], [X(38), 44], [X(22), 48], [X(10), 52]]), [] as never, [Math.min(X(4), X(40)), 8, Math.max(X(4), X(40)), 52], s === 1 ? 1 : -1);
+  }
+  p.shape(ell(40, 48, 15, 14), [] as never, [25, 34, 55, 62]);
+  p.shape(ell(40, 30, 9, 8.5), [] as never, [31, 21, 49, 39]);
+  p.shape(poly([[33, 26], [29, 12], [37, 22]]), [] as never, [29, 12, 37, 26]); p.shape(poly([[47, 26], [51, 12], [43, 22]]), [] as never, [43, 12, 51, 26]);
+  p.shape(poly([[26, 56], [20, 68], [30, 68]]), [] as never, [20, 56, 30, 68]); p.shape(poly([[54, 56], [60, 68], [50, 68]]), [] as never, [50, 56, 60, 68]);
+  p.shape(poly([[52, 56], [68, 50], [72, 58], [60, 62]]), [] as never, [52, 50, 72, 62]);
+  for (const [x, y] of [[28, 38], [52, 38], [34, 50], [46, 50]]) p.accent(poly([[x, y - 5], [x + 2, y], [x, y + 2], [x - 2, y]]), 'rgba(191,230,255,.85)');
+  eyes(p, bl, '#bfe6ff', [[35, 29], [43, 29]], 3, 2);
+  p.accent(ell(40, 30, 14, 10), 'rgba(191,230,255,.1)');
+};
+
+/* ───── Склепный страж ───── */
+const knight: Draw = (p, ph, bl) => {
+  p.shape(poly([[26, 36], [46, 36], [52, 62], [56, 96], [16, 96], [20, 62]]), [] as never, [16, 36, 56, 96]);
+  p.shape(poly([[26, 6], [46, 6], [48, 20], [46, 32], [26, 32], [24, 20]]), [] as never, [24, 6, 48, 32]);
+  p.shape(poly([[36, 0], [32, 8], [40, 8]]), [] as never, [32, 0, 40, 8]);
+  p.shape(poly([[10, 38], [30, 36], [30, 72], [20, 82], [10, 72]]), [] as never, [10, 36, 30, 82]);
+  p.shape(bar(46, 42, 62, 22, 4.4), [] as never, [44, 18, 66, 46]);
+  p.shape(bar(62, 22, 66 + wob(ph, 0, 0.6), 0, 2.6), [] as never, [60, -2, 70, 24]);
+  p.shape(bar(56, 24, 70, 28, 2), [] as never, [54, 22, 72, 30]);
+  p.accent(rect(18, 44, 22, 66), 'rgba(217,210,192,.55)'); p.accent(rect(13, 52, 27, 55), 'rgba(217,210,192,.55)');
+  p.accent(poly([[36, 0], [30, -4], [38, 4]]), '#b83a32');
+  p.accent(bl ? rect(28, 19, 44, 20) : rect(28, 18, 44, 21), '#bfe6ff');
+  p.accent(ell(36, 20, 14, 7), 'rgba(191,230,255,.12)');
+};
+
+/* ───── Агнета Седьмая (элита) ───── */
+const agneta: Draw = (p, ph, bl) => {
+  const hv = wob(ph, 0, 2.2);
+  p.shape(poly([[34, 12], [58, 12], [70 + hv, 40], [74 + hv * 1.4, 70], [60, 44], [50, 64], [44, 44], [32, 66], [20, 44], [14 + hv * 1.4, 70], [18 + hv, 40]]), [] as never, [14, 12, 74, 70]);
+  p.shape(poly([[34, 36], [58, 36], [64, 70], [70, 108], ...hem(70, 20, 108, 9, ph, 4, 2), [28, 70]]), [] as never, [20, 36, 70, 112]);
+  p.shape(ell(46, 28, 9, 11), [] as never, [37, 17, 55, 39]);
+  p.shape(bar(36, 44, 22, 22 + hv * 0.6, 5), [] as never, [18, 18, 40, 48]); p.shape(bar(56, 44, 70, 22 - hv * 0.6, 5), [] as never, [54, 18, 74, 48]);
+  const wv = (ph * 5) % 8;
+  for (let k = 0; k < 3; k++) { p.x.strokeStyle = `rgba(191,230,255,${0.65 - k * 0.2})`; p.x.lineWidth = 1.4; p.x.beginPath(); p.x.arc(40, 30, 14 + k * 9 + wv, Math.PI * 0.7, Math.PI * 1.3); p.x.stroke(); }
+  p.accent(ell(46, 32, 3.4, 4.4 * (1 + Math.sin(ph * 4) * 0.25)), '#bfe6ff');
+  p.accent(ell(46, 56, 4, 4), '#e8a94a'); p.accent(rect(45, 54, 47, 58), '#7a4a14');
+  eyes(p, bl, '#e0f4ff', [[41, 26], [49, 26]], 3, 2);
+};
+
+/* ───── Близнецы Хора ───── */
+function twin(p: Pix, ph: number, bl: boolean, who: 'a' | 'b') {
+  const w = who === 'a' ? 1 : -1;
+  p.shape(poly([[30, 34], [50, 34], [57, 64], [64, 104], ...hem(64, 16, 104, 9, ph + (who === 'b' ? 1 : 0), 3, 1.4), [23, 64]]), [] as never, [16, 34, 64, 108]);
+  p.shape(poly([[26, 8], [54, 8], [52, 32], [28, 32]]), [] as never, [26, 8, 54, 32]);
+  p.shape(poly([[40, 0], [30, 10], [50, 10]]), [] as never, [30, 0, 50, 10]);
+  p.shape(bar(30, 40, 26, 62, 5), [] as never, [22, 38, 34, 64]); p.shape(bar(50, 40, 54, 62, 5), [] as never, [48, 38, 60, 64]);
+  p.accent(poly(w === 1 ? [[28, 14], [40, 14], [40, 32], [28, 32]] : [[40, 14], [52, 14], [52, 32], [40, 32]]), 'rgba(217,210,192,.9)');
+  p.accent(rect(34, 36, 46, 38), 'rgba(217,210,192,.4)');
+  if (who === 'a') {
+    p.shape(bar(66, 10, 66, 104, 2.6), [] as never, [62, 8, 70, 106]);
+    const sw = wob(ph, 0, 2.4);
+    p.shape(poly([[58, 14], [74, 14], [78, 30 + sw * 0.2], [84, 40], [48, 40], [54, 30]]), [] as never, [48, 14, 84, 40]);
+    p.accent(rect(62 + sw * 0.3, 40, 68 + sw * 0.3, 46), '#c0833a');
+  } else {
+    p.shape(bar(14, 20, 14, 100, 2), [] as never, [10, 18, 18, 102]);
+    const wv = wob(ph, 1, 1.6);
+    p.accent(poly([[4, 40], [24, 40 + wv], [24, 70 + wv], [4, 66]]), '#d9d2c0');
+    for (let i = 0; i < 4; i++) p.accent(rect(6, 44 + i * 5 + wv * 0.4, 22, 44.8 + i * 5 + wv * 0.4), '#33343c');
+    p.accent(bar(20, 28, 28, 40, 1.2), '#8a5a2b');
+  }
+  eyes(p, bl, '#fff0c0', [[w === 1 ? 44 : 31, 21], [w === 1 ? 49 : 36, 21]], 3, 2);
+}
+const twinA: Draw = (p, ph, bl) => twin(p, ph, bl, 'a');
+const twinB: Draw = (p, ph, bl) => twin(p, ph, bl, 'b');
+
 const DEFS: Record<string, Def> = {
   gravedigger: { w: 64, h: 88, rim: '#e8a94a', dir: 1, draw: gravedigger },
   wickkeeper: { w: 60, h: 94, rim: '#e8a94a', dir: 1, draw: wickkeeper },
@@ -261,11 +370,18 @@ const DEFS: Record<string, Def> = {
   choirmaster: { w: 96, h: 118, rim: '#e8a94a', dir: -1, draw: choirmaster },
   gatekeeper: { w: 100, h: 124, rim: '#8e9fb4', dir: -1, draw: gatekeeper },
   tide: { w: 122, h: 134, rim: '#9ed1c6', dir: -1, draw: tide },
+  bellringer: { w: 64, h: 90, rim: '#e8a94a', dir: 1, draw: bellringer },
+  shade: { w: 50, h: 96, rim: '#bfe6ff', dir: -1, draw: shade },
+  gargoyle: { w: 82, h: 72, rim: '#9cc3e6', dir: -1, draw: gargoyle },
+  knight: { w: 76, h: 100, rim: '#9cc3e6', dir: -1, draw: knight },
+  agneta: { w: 88, h: 114, rim: '#bfe6ff', dir: -1, draw: agneta },
+  twin_a: { w: 88, h: 110, rim: '#e8a94a', dir: -1, draw: twinA },
+  twin_b: { w: 88, h: 110, rim: '#a98bd0', dir: -1, draw: twinB },
 };
 export const SIL_IDS = Object.keys(DEFS);
 export const SIL_NAMES: Record<string, string> = {
   gravedigger: 'Могильщик', wickkeeper: 'Свечница', laundress: 'Утопленница-прачка', candle: 'Свечник', bellman: 'Утонувший звонарь', mussel: 'Певчая ракушка', hound: 'Тинный пёс',
-  fisher: 'Каменный рыбак', alban: 'Альбан', monk: 'Пепельный монах', seraph: 'Стеклянный серафим', reaper: 'Жнец Хора', choirmaster: 'Хормейстер Оттон', gatekeeper: 'Привратник', tide: 'Мать Приливов',
+  fisher: 'Каменный рыбак', alban: 'Альбан', monk: 'Пепельный монах', seraph: 'Стеклянный серафим', reaper: 'Жнец Хора', bellringer: 'Звонарь', shade: 'Тень хориста', gargoyle: 'Ледяной горгул', knight: 'Склепный страж', agneta: 'Агнета Седьмая', twin_a: 'Ильм Первый', twin_b: 'Ильва Вторая', choirmaster: 'Хормейстер Оттон', gatekeeper: 'Привратник', tide: 'Мать Приливов',
 };
 
 /** Живая отрисовка: каждый кадр заново, холст переиспользуется. Фаза непрерывная, поэтому подол, огонь и фонарь движутся плавно. */

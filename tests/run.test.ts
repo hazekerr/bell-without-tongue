@@ -3,7 +3,8 @@ import { Rng } from '../src/engine/rng.ts';
 import {
   MemoryStore, setStore, loadChronicle, saveChronicle, newChronicle, grantPage, isCardUnlocked, pageAvailable, tryGrantPage,
 } from '../src/engine/chronicle.ts';
-import { startRun, generateMap, onDeath, available, nodeById, startCombat, finishCombat, FLOORS, cardPool } from '../src/engine/run.ts';
+import { Combat } from '../src/engine/combat.ts';
+import { startRun, generateMap, startCombat, onDeath, available, nodeById, finishCombat, FLOORS, cardPool } from '../src/engine/run.ts';
 import { pickEvent, EVENTS } from '../src/engine/events.ts';
 import { CARDS } from '../src/engine/cards.ts';
 import { PAGES, PAGE_LIST } from '../src/content/pages.ts';
@@ -144,5 +145,36 @@ describe('сохранение', () => {
     grantPage(c, 'p_awake');
     saveChronicle(c);
     expect(loadChronicle().names).toContain('Мёрк');
+  });
+});
+
+describe('роль Звонаря', () => {
+  it('открывается после победы над боссом Круга II и даёт страницу', () => {
+    const chron = newChronicle();
+    expect(chron.roles).not.toContain('bellringer');
+    const run = startRun(chron, 'gravedigger', 'br');
+    run.circle = 2;
+    const node = { id: 'c2boss', floor: 8, col: 1, type: 'boss' as const, next: [] };
+    const combat = new Combat({ rng: new Rng(3), role: 'gravedigger', deck: run.deck, hp: 80, maxHp: 80, relics: [], enemies: ['choirmaster'], circle: 2 });
+    combat.living[0].hp = 1;
+    const s = combat.hand.find((c) => CARDS[c.id].type === 'strike');
+    if (s) combat.play(s.uid);
+    else { for (const e of combat.living) e.hp = 0; }
+    combat.living.forEach((e) => { e.alive = false; });
+    (combat as unknown as { result: string }).result = 'win';
+    finishCombat(run, combat, node, chron);
+    expect(chron.roles).toContain('bellringer');
+    expect(chron.pages).toContain('p_ringer');
+  });
+});
+
+describe('события в каждом Круге', () => {
+  it('в любом Круге находится событие', () => {
+    for (const circle of [1, 2, 3]) {
+      const chron = newChronicle();
+      const run = startRun(chron, 'gravedigger', `ev-c${circle}`);
+      run.circle = circle;
+      expect(() => pickEvent(run, chron)).not.toThrow();
+    }
   });
 });

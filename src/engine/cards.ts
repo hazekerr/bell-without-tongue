@@ -413,6 +413,101 @@ add({
   flavor: 'Седьмая из Двенадцати. Спела так, что услышал даже камень.',
 });
 
+
+/* ═════════════ Звонарь ═════════════ */
+const toll = (x: Ctx) => x.hero.toll;
+add({
+  id: 'bell_strike', name: 'Удар в колокол', type: 'rite', cost: 1, pool: 'bellringer', rarity: 'basic', target: 'none', art: 'bell', startUnlocked: true,
+  text: (u) => `+${v(u, 2, 3)} Звона. Возьми 1.`,
+  play: (x, u) => { x.toll(v(u, 2, 3)); x.draw(1); },
+  flavor: 'Колокол без языка всё равно звучит.',
+});
+add({
+  id: 'pull_cord', name: 'Потянуть шнур', type: 'rite', cost: 0, pool: 'bellringer', rarity: 'basic', target: 'none', art: 'chain', startUnlocked: true,
+  text: (u) => `Получи ${v(u, 3, 5)} Брони. +1 Звон.`,
+  play: (x, u) => { x.block(v(u, 3, 5)); x.toll(1); },
+});
+add({
+  id: 'copper_tongue', name: 'Медный язык', type: 'strike', cost: 1, pool: 'bellringer', rarity: 'common', target: 'enemy', art: 'bell', startUnlocked: true,
+  text: (u) => `Нанеси ${v(u, 7, 9)} урона. +1 Звон.`,
+  play: (x, u, t) => { x.dmg(t!, v(u, 7, 9)); x.toll(1); },
+});
+add({
+  id: 'muffled_toll', name: 'Глухой звон', type: 'ward', cost: 1, pool: 'bellringer', rarity: 'common', target: 'none', art: 'ward', startUnlocked: true,
+  text: (u) => `Получи ${v(u, 7, 10)} Брони. +1 Звон.`,
+  play: (x, u) => { x.block(v(u, 7, 10)); x.toll(1); },
+});
+add({
+  id: 'triple_peal', name: 'Трезвон', type: 'strike', cost: 1, pool: 'bellringer', rarity: 'common', target: 'enemy', art: 'bell', startUnlocked: true,
+  text: (u) => `Нанеси ${v(u, 3, 4)} урона трижды.`,
+  play: (x, u, t) => { for (let i = 0; i < 3 && t!.alive; i++) x.dmg(t!, v(u, 3, 4)); },
+});
+add({
+  id: 'echo', name: 'Эхо', type: 'strike', cost: 0, pool: 'bellringer', rarity: 'common', target: 'enemy', art: 'wind', startUnlocked: true,
+  text: (u) => `Нанеси ${v(u, 4, 6)} урона. +1 Звон.`,
+  play: (x, u, t) => { x.dmg(t!, v(u, 4, 6)); x.toll(1); },
+});
+add({
+  id: 'bell_tower', name: 'Колокольня', type: 'ward', cost: 2, pool: 'bellringer', rarity: 'common', target: 'none', art: 'crypt', startUnlocked: true,
+  text: (u) => `Получи ${v(u, 12, 16)} Брони. +2 Звона.`,
+  play: (x, u) => { x.block(v(u, 12, 16)); x.toll(2); },
+});
+add({
+  id: 'peal', name: 'Перезвон', type: 'rite', cost: 1, pool: 'bellringer', rarity: 'common', target: 'none', art: 'voice', startUnlocked: true,
+  text: (u) => `+${v(u, 3, 4)} Звона.`,
+  play: (x, u) => x.toll(v(u, 3, 4)),
+});
+add({
+  id: 'alarm', name: 'Набат', type: 'strike', cost: 2, pool: 'bellringer', rarity: 'uncommon', target: 'all', art: 'march',
+  text: (u) => `Нанеси ${v(u, 5, 7)} урона всем. +2 Звона.`,
+  play: (x, u) => { x.dmgAll(v(u, 5, 7)); x.toll(2); },
+});
+add({
+  id: 'great_strike', name: 'Колокольный удар', type: 'strike', cost: 2, pool: 'bellringer', rarity: 'uncommon', target: 'enemy', art: 'cross',
+  text: (u) => `Нанеси ${v(u, 12, 15)} урона. Если Звона 4+: +${v(u, 6, 8)}.`,
+  play: (x, u, t) => x.dmg(t!, v(u, 12, 15) + (toll(x) >= 4 ? v(u, 6, 8) : 0)),
+});
+add({
+  id: 'resonance', name: 'Резонанс', type: 'rite', cost: 1, pool: 'bellringer', rarity: 'uncommon', target: 'enemy', art: 'eye',
+  text: (u) => `Если Звона 3+: ${T.chains} 1. Иначе ${T.dread} ${v(u, 2, 3)}.`,
+  play: (x, u, t) => { if (toll(x) >= 3) x.apply(t!, 'chains', 1); else x.apply(t!, 'dread', v(u, 2, 3)); },
+});
+add({
+  id: 'rust_bell', name: 'Ржавый колокол', type: 'rite', cost: 2, pool: 'bellringer', rarity: 'uncommon', target: 'none', art: 'bell',
+  text: (u) => `Наложи ${T.dread} ${v(u, 2, 3)} всем врагам. +3 Звона.`,
+  play: (x, u) => { x.applyAll('dread', v(u, 2, 3)); x.toll(3); },
+});
+add({
+  id: 'silence', name: 'Тишина', type: 'ward', cost: 1, pool: 'bellringer', rarity: 'uncommon', target: 'none', art: 'shroud',
+  text: (u) => `Получи ${v(u, 6, 9)} Брони. В следующем ходу возьми на 1 карту больше.`,
+  play: (x, u) => { x.block(v(u, 6, 9)); x.nextDraw(1); },
+});
+add({
+  id: 'choir_of_one', name: 'Хор из одного', type: 'ward', cost: 1, pool: 'bellringer', rarity: 'uncommon', target: 'none', art: 'ancestors',
+  text: (u) => `Получи ${v(u, 4, 5)} Брони за каждый тип карты, сыгранный в этом ходу.`,
+  play: (x, u) => x.block(v(u, 4, 5) * Math.max(1, x.types.size)),
+});
+add({
+  id: 'funeral_peal', name: 'Погребальный звон', type: 'rite', cost: 2, pool: 'bellringer', rarity: 'rare', target: 'none', art: 'psalm', exhaust: true,
+  text: (u) => `Звон станет 5, затем +1: колокол бьёт сразу. Исчерпай.${u ? ' Стоит 1.' : ''}`,
+  play: (x) => { x.hero.toll = 5; x.toll(1); },
+});
+add({
+  id: 'not_for_you', name: 'Колокол не по тебе', type: 'rite', cost: 1, pool: 'bellringer', rarity: 'rare', target: 'none', art: 'bell', exhaust: true,
+  text: (u) => `Возьми ${v(u, 2, 3)}. +2 Звона. Получи 1 Дыхание. Исчерпай.`,
+  play: (x, u) => { x.draw(v(u, 2, 3)); x.toll(2); x.breath(1); },
+});
+add({
+  id: 'iron_clapper', name: 'Железный язык', type: 'strike', cost: 1, pool: 'bellringer', rarity: 'rare', target: 'enemy', art: 'axe',
+  text: (u) => `Нанеси ${v(u, 4, 5)} +3 за каждый Звон (макс. ${v(u, 22, 26)}).`,
+  play: (x, u, t) => x.dmg(t!, Math.min(v(u, 4, 5) + 3 * toll(x), v(u, 22, 26))),
+});
+add({
+  id: 'last_note', name: 'Последняя нота', type: 'strike', cost: 3, pool: 'bellringer', rarity: 'rare', target: 'enemy', art: 'note', exhaust: true,
+  text: (u) => `Нанеси ${v(u, 20, 26)} урона. Если ЗДР ниже 30%: +10. Исчерпай.`,
+  play: (x, u, t) => x.dmg(t!, v(u, 20, 26) + (x.hpPct < 0.3 ? 10 : 0)),
+});
+
 /* ═════════════ Долги ═════════════ */
 add({
   id: 'iou', name: 'Расписка Ростовщика', type: 'debt', cost: 0, pool: 'debt', rarity: 'common', target: 'none', art: 'iou', unplayable: true, startUnlocked: true,
@@ -438,7 +533,7 @@ export function cardCost(id: string, up: boolean): number {
 export const BASIC_DECKS: Record<string, string[]> = {
   gravedigger: ['strike', 'strike', 'strike', 'strike', 'ward', 'ward', 'ward', 'ward', 'grave_dust', 'dig_deeper'],
   wickkeeper: ['strike', 'strike', 'strike', 'strike', 'ward', 'ward', 'ward', 'ward', 'memorial_candle', 'splinter'],
-  bellringer: [],
+  bellringer: ['strike', 'strike', 'strike', 'strike', 'ward', 'ward', 'ward', 'ward', 'bell_strike', 'pull_cord'],
   penitent: [],
 };
 
@@ -455,6 +550,6 @@ export const ROLE_INFO: Record<string, { name: string; hp: number; tagline: stri
     chord: 'Аккорд: +3 Пламени и исцели 2.',
     blurb: 'Платит здоровьем за свет. Каждая сгоревшая свеча — удар сильнее. Хрупкая и яркая.',
   },
-  bellringer: { name: 'Звонарь', hp: 72, tagline: 'Звон · Оковы', chord: 'Аккорд: +3 Звона.', blurb: 'Откроется по ходу истории.' },
+  bellringer: { name: 'Звонарь', hp: 72, tagline: 'Звон · Оковы', chord: 'Аккорд: +2 Звона.', blurb: 'Каждая сыгранная карта звенит. На шестом ударе колокол бьёт по всем врагам на 6 урона. Ритм вместо расчёта.' },
   penitent: { name: 'Исповедник', hp: 70, tagline: 'Долг · Страх', chord: '—', blurb: 'Откроется по ходу истории.' },
 };

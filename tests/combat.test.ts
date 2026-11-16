@@ -196,3 +196,41 @@ describe('Правила боя', () => {
     expect(a.living[0].hp).toBe(b.living[0].hp);
   });
 });
+
+describe('Звонарь и Звон', () => {
+  it('каждая сыгранная карта даёт +1 Звон, на шестом колокол бьёт по всем', () => {
+    const c = setup('bellringer', ['mussel', 'mussel'], 5, ['ward', 'ward', 'ward', 'ward', 'ward', 'ward', 'strike', 'strike', 'strike', 'strike']);
+    hand(c, ['ward', 'ward', 'ward']);
+    c.breath = 9;
+    const hp = c.living.map((e) => e.hp);
+    for (let i = 0; i < 3; i++) c.play(c.hand.find((x) => x.id === 'ward')!.uid);
+    expect(c.hero.toll).toBe(3);
+    c.hero.toll = 5;
+    hand(c, ['ward']);
+    c.play(c.hand[0].uid);
+    expect(c.hero.toll).toBe(0);
+    c.living.forEach((e, i) => expect(e.hp).toBeLessThan(hp[i]));
+    expect(c.events.some((e) => e.t === 'toll')).toBe(true);
+  });
+
+  it('Аккорд Звонаря добавляет 2 Звона', () => {
+    const c = setup('bellringer', ['stone_fisher'], 9);
+    hand(c, ['strike', 'ward', 'peal']);
+    c.breath = 5;
+    for (const id of ['strike', 'ward', 'peal']) c.play(c.hand.find((x) => x.id === id)!.uid);
+    // 3 карты (+3) + «Перезвон» (+3) + Аккорд (+2) = 8: колокол ударил один раз, остаток 2
+    expect(c.chordDone).toBe(true);
+    expect(c.hero.toll).toBe(2);
+  });
+});
+
+describe('Круг III', () => {
+  it('все враги Круга III создаются и ходят без ошибок', async () => {
+    const { ENCOUNTERS } = await import('../src/engine/enemies.ts');
+    for (const kind of ['normal', 'elite', 'boss'] as const) for (const enc of ENCOUNTERS[3][kind]) {
+      const c = setup('gravedigger', enc, 3);
+      for (let i = 0; i < 6 && !c.result; i++) c.endTurn();
+      expect(c.living.length + c.kills.length).toBeGreaterThan(0);
+    }
+  });
+});

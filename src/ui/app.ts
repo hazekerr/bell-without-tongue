@@ -180,7 +180,7 @@ function openRolePick() {
     cvs.width = 64; cvs.height = 64;
     const x = cvs.getContext('2d')!;
     x.fillStyle = '#18141f'; x.fillRect(0, 0, 64, 64);
-    const sp = sprite(r === 'wickkeeper' ? 'wickkeeper' : 'gravedigger');
+    const sp = sprite(r === 'wickkeeper' ? 'wickkeeper' : r === 'bellringer' ? 'bellringer' : 'gravedigger');
     drawSprite(x, sp, 32, 62, Math.min(1, 56 / sp.h), 0, false, 0);
     const card = h('button', { class: `role-card${open ? '' : ' locked'}` }, cvs, h('h3', null, info.name), h('div', { class: 'tag' }, info.tagline), h('p', null, open ? info.blurb : 'Откроется по ходу истории.'), open ? h('p', { style: { color: 'var(--amber)' } }, info.chord) : h('div'), open ? h('div', { class: 'sub', style: { fontSize: '12px' } }, `ЗДР ${info.hp} · 10 карт · 3 Дыхания`) : h('div'));
     if (open) card.addEventListener('click', () => { audio.sfx('tap'); s.close(); void beginRun(r); });
@@ -193,7 +193,7 @@ async function beginRun(role: 'gravedigger' | 'wickkeeper' | 'bellringer' | 'pen
   save();
   audio.sfx('bell');
   mount(h('div', { class: 'screen', style: { background: '#000' } }));
-  await dialogue([{ who: 'Рассказчик', text: `Ты надеваешь память ${role === 'gravedigger' ? 'могильщика' : 'свечницы'}. Она тяжёлая, но своя.` }]);
+  await dialogue([{ who: 'Рассказчик', text: `Ты надеваешь память ${role === 'gravedigger' ? 'могильщика' : role === 'wickkeeper' ? 'свечницы' : 'звонаря'}. Она тяжёлая, но своя.` }]);
   showMap();
 }
 
@@ -202,7 +202,7 @@ export function showMap() {
   const run = G.run;
   if (!run) { void showHub(); return; }
   audio.play('map');
-  const s = scene('map', run.circle >= 2 ? 'c2' : 'c1', run.circle >= 2 ? 'ash' : 'rain', 'full');
+  const s = scene('map', run.circle >= 3 ? 'c3' : run.circle >= 2 ? 'c2' : 'c1', run.circle >= 2 ? 'ash' : 'rain', 'full');
   const avail = new Set(available(run).map((n) => n.id));
   const COL = 112, X0 = 64, AREA = 318;
   const posX = (n: MapNode) => (n.type === 'boss' ? X0 + FLOORS * COL + 30 : X0 + n.floor * COL);
@@ -300,7 +300,7 @@ async function doCombat(node: MapNode) {
 
 async function rewardFlow(reward: ReturnType<typeof finishCombat>, node: MapNode, combat: Combat) {
   const run = G.run!;
-  const s = scene('reward', run.circle >= 2 ? 'c2' : 'c1', 'embers', 'full');
+  const s = scene('reward', run.circle >= 3 ? 'c3' : run.circle >= 2 ? 'c2' : 'c1', 'embers', 'full');
   const left: HTMLElement[] = [h('div', { class: 'gold-line' }, `+${reward.gold} монет`)];
   if (reward.healed) left.push(h('p', { class: 'sub' }, `Огарок исцелил ${reward.healed}.`));
   if (combat.goldGain) left.push(h('p', { class: 'sub' }, `Из них мародёрство: ${combat.goldGain}.`));
@@ -325,7 +325,7 @@ async function afterBattle(node: MapNode) {
     nextCircle(run, G.chron);
     save();
     audio.sfx('bell');
-    await dialogue([{ who: 'Рассказчик', text: 'Вода уходит. Над тобой смыкаются своды — рёбра. Не города. Чьи-то ещё.' }]);
+    await dialogue([{ who: 'Рассказчик', text: run.circle === 2 ? 'Вода уходит. Над тобой смыкаются своды — рёбра. Не города. Чьи-то ещё.' : 'Лестница вниз ведёт к синему свету. Там, в двенадцати нишах, стоят хористы. Одиннадцать лиц смотрят на тебя. Двенадцатая ниша пуста.' }]);
   }
   showMap();
 }
@@ -468,7 +468,7 @@ async function victory() {
     h('p', { class: 'sub', style: { fontSize: '17px' } }, 'Хормейстер молчит. Где-то глубже кто-то зовёт тебя по имени, которого ты не помнишь.'),
     h('div', { class: 'autopsy', style: { width: '100%' } }, stat('Бои', String(run.stats.combats)), stat('Аккорды', String(run.stats.chords)), stat('Монеты', String(run.gold)), stat('Колода', String(run.deck.length))),
     h('div', { style: { width: '260px' } }, btn('Вернуться в Сальвен', 'primary', () => { void showHub({ talk: true }); })),
-    h('div', { class: 'hint-t' }, 'Конец вертикального среза. Круги III–VII и финал впереди.')));
+    h('div', { class: 'hint-t' }, 'Конец среза. Круги IV–VII и финал впереди.')));
   s.mount();
   await sleep(400);
   await pageReveals(gs);
@@ -583,7 +583,7 @@ function openChronicle() {
 /* ───────────────── Библиотека карт ───────────────── */
 function openLibrary() {
   const c = G.chron;
-  const tabs: [string, string][] = [['gravedigger', 'Могильщик'], ['wickkeeper', 'Свечница'], ['neutral', 'Общие'], ['debt', 'Долги']];
+  const tabs: [string, string][] = [['gravedigger', 'Могильщик'], ['wickkeeper', 'Свечница'], ['bellringer', 'Звонарь'], ['neutral', 'Общие'], ['debt', 'Долги']];
   let tab = 'gravedigger';
   const grid = h('div', { style: { maxHeight: '250px', overflowY: 'auto' } });
   const tabsEl = h('div', { class: 'tabs' });
@@ -636,7 +636,7 @@ export function boot() {
   applySettings();
   G.run = loadRun();
   if (new URLSearchParams(location.search).has('debug')) {
-    (window as unknown as Record<string, unknown>).__bwt = { G, showHub, showMap, showTitle, grantPage, unlockRole, save, openRolePick, beginRun, rngOf, saveRng, cardEnabled, openChronicle, openLibrary, doCombat, returnSequence, onDeath, startRun, sprite };
+    (window as unknown as Record<string, unknown>).__bwt = { G, showHub, showMap, showTitle, grantPage, unlockRole, save, openRolePick, beginRun, rngOf, saveRng, cardEnabled, openChronicle, openLibrary, doCombat, returnSequence, onDeath, startRun, sprite, nextCircle };
   }
   showTitle();
   const unlock = () => { audio.unlock(); window.removeEventListener('pointerdown', unlock); };

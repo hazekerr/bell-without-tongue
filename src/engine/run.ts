@@ -4,7 +4,7 @@ import { BASIC_DECKS, CARDS, ROLE_INFO } from './cards.ts';
 import { ENEMIES, ENCOUNTERS } from './enemies.ts';
 import { RELICS, RELIC_POOL } from './relics.ts';
 import {
-  type Chronicle, type PageGrant, cardEnabled, grantPage, tryGrantPage, ageFresh, saveChronicle,
+  type Chronicle, type PageGrant, cardEnabled, grantPage, tryGrantPage, ageFresh, saveChronicle, unlockRole,
 } from './chronicle.ts';
 import type { CardInst, RoleId } from './types.ts';
 
@@ -19,7 +19,7 @@ export interface MapNode {
 
 export const FLOORS = 8;
 export const COLS = 4;
-export const MAX_CIRCLE = 2; // в срезе доступны Круги I–II
+export const MAX_CIRCLE = 3; // в срезе доступны Круги I–III
 
 export interface RunStats {
   nodes: number;
@@ -219,6 +219,14 @@ export function finishCombat(run: RunState, combat: Combat, node: MapNode, chron
       run.pagesThisRun.push(g.page);
     }
   }
+  if (tier === 'boss' && run.circle === 2) {
+    unlockRole(chron, 'bellringer');
+    const g = tryGrantPage(chron, 'p_ringer');
+    if (g?.isNew) {
+      grants.push(g);
+      run.pagesThisRun.push(g.page);
+    }
+  }
   if (tier === 'boss' && run.circle === 1) {
     const g = tryGrantPage(chron, 'p_reveal1');
     if (g?.isNew) {
@@ -341,7 +349,7 @@ export function nextCircle(run: RunState, chron: Chronicle) {
 const CAUSE: Record<string, string> = {
   drowned_laundress: 'Выжат прачкой', silt_hound: 'Загрызен тинным псом', stone_fisher: 'Пойман в сеть', mussel: 'Зазвучал в хоре ракушек',
   alban: 'Закопан Альбаном', drowned_bellman: 'Прозвонен насквозь', tide_mother: 'Смыт Матерью Приливов', candle_bearer: 'Сожжён свечником',
-  ash_monk: 'Обращён в пепел', stained_seraph: 'Порезан витражом', choir_reaper: 'Скошен Жнецом Хора', choirmaster: 'Принят в хор Оттона', gatekeeper: 'Принят у Врат',
+  ash_monk: 'Обращён в пепел', stained_seraph: 'Порезан витражом', choir_reaper: 'Скошен Жнецом Хора', choirmaster: 'Принят в хор Оттона', chorister_shade: 'Втянут в строчку без конца', ice_gargoyle: 'Замёрз под горгульей', tomb_knight: 'Заперт в склепе', agneta: 'Услышан Агнетой', twin_a: 'Прозвонен Ильмом', twin_b: 'Прочитан Ильвой', gatekeeper: 'Принят у Врат',
 };
 const TAIL_GENERIC = ['Копал неглубоко.', 'Просил не звонить.', 'Не доиграл Аккорд.', 'Забыл про Броню.', 'Верил расписанию.', 'Шёл на звук.', 'Слишком надеялся на Тлен.'];
 

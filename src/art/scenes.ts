@@ -5,7 +5,7 @@ const P32 = ['#0b0d12', '#14161f', '#1f2433', '#2b3347', '#263330', '#35514c', '
 const R32 = P32.map((h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
 const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
 
-export type SceneKind = 'c1' | 'c2' | 'hub' | 'title' | 'vision';
+export type SceneKind = 'c1' | 'c2' | 'c3' | 'hub' | 'title' | 'vision';
 
 function quantize(c: HTMLCanvasElement, dither = 0.07) {
   const ctx = c.getContext('2d')!;
@@ -71,6 +71,24 @@ function drawScene(kind: SceneKind, W: number, H: number): HTMLCanvasElement {
     for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(111,154,138,.25)'; x.fillRect(r.int(0, W), r.int(hz + 4, H - 4), r.int(8, 30), 1); }
     // сваи
     for (const px of [W * 0.04, W * 0.97, W * 0.46]) { x.fillStyle = '#080d0e'; x.fillRect(px - 5 * K, hz - 20 * K, 10 * K, 70 * K); x.fillStyle = '#1b302e'; x.fillRect(px - 5 * K, hz - 20 * K, 2 * K, 70 * K); }
+  } else if (kind === 'c3') {
+    // Нижний Хор: ледяной неф, двенадцать ниш с хористами, синие свечи, зеркальный пол
+    skyGrad(x, W, hz, ['#07101c', '#122238', '#27486b', '#4f84b0', '#9cc3e6']);
+    glowDisc(x, W / 2, hz - 30 * K, 26 * K, '#d6ecff', 'rgba(156,195,230,.5)');
+    for (let l = 0; l < 2; l++) for (let i = 0; i < 12; i++) {
+      const cx2 = ((i + 0.5) / 12) * W, cw = 24 * K, ch = (86 - l * 14) * K;
+      x.fillStyle = l ? '#0c1626' : '#081020'; x.fillRect(cx2 - cw / 2, hz - ch, cw, ch);
+      x.beginPath(); x.arc(cx2, hz - ch, cw / 2, Math.PI, 0); x.fill();
+      if (l === 1) { x.fillStyle = '#9cc3e6'; x.globalAlpha = 0.5; x.fillRect(cx2 - 1.5 * K, hz - ch * 0.55, 3 * K, 9 * K); x.globalAlpha = 1; x.fillStyle = '#04070d'; x.beginPath(); x.arc(cx2, hz - ch * 0.78, 5 * K, 0, 7); x.fill(); x.fillRect(cx2 - 5 * K, hz - ch * 0.78, 10 * K, 14 * K); }
+    }
+    x.strokeStyle = '#04070d'; x.lineWidth = 12 * K;
+    for (const px2 of [W * 0.12, W * 0.88]) { x.beginPath(); x.moveTo(px2, H); x.lineTo(px2, 0); x.stroke(); }
+    x.lineWidth = 9 * K; x.beginPath(); x.moveTo(W * 0.12, 8 * K); x.bezierCurveTo(W * 0.3, -14 * K, W * 0.7, -14 * K, W * 0.88, 8 * K); x.stroke();
+    const g = x.createLinearGradient(0, hz, 0, H); g.addColorStop(0, '#16304c'); g.addColorStop(1, '#050a12');
+    x.fillStyle = g; x.fillRect(0, hz, W, H - hz);
+    reflect(x, W / 2, hz, H, 26 * K, 'rgba(214,236,255,A)');
+    for (let i = 0; i < 30; i++) { x.fillStyle = 'rgba(156,195,230,.18)'; x.fillRect(r.int(0, W), r.int(hz + 6, H - 4), r.int(10, 36), 1); }
+    for (let i = 0; i < 12; i++) { const cx2 = ((i + 0.5) / 12) * W; x.fillStyle = '#9cc3e6'; x.fillRect(cx2 - 1, hz + 6 + (i % 3) * 5, 2, 3); }
   } else if (kind === 'c2') {
     skyGrad(x, W, hz, ['#150f22', '#3a2230', '#7a3a2c', '#c0603a', '#e8a94a']);
     glowDisc(x, W / 2, hz - 10 * K, 40 * K, '#f6cf7a', 'rgba(232,169,74,.55)');

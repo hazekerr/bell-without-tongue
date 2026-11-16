@@ -257,6 +257,8 @@ export class Combat {
     card.returned = false;
     card.free = false;
     if (this.checkEnd()) return;
+    if (this.role === 'bellringer' && d.type !== 'debt') this.addToll(1);
+    if (this.checkEnd()) return;
     this.checkChord();
     this.checkEnd();
   }
@@ -275,7 +277,7 @@ export class Combat {
         this.healHero(2);
         break;
       case 'bellringer':
-        this.addToll(3);
+        this.addToll(2);
         break;
       case 'penitent':
         break;
@@ -290,7 +292,7 @@ export class Combat {
       this.hero.toll -= 6;
       this.emit({ t: 'toll' });
       for (const e of this.living) {
-        this.hurtEnemy(e, 8);
+        this.hurtEnemy(e, 6);
         if (e.alive && ENEMIES[e.def].tier === 'normal') this.addStatus(e, 'chains', 1, false);
       }
     }

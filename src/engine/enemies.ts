@@ -104,6 +104,37 @@ export const ENEMIES: Record<string, EnemyDef> = {
       return atk('fermata', 'Фермата', e.phase >= 1 ? 24 : 18);
     },
   },
+  /* ───────────── Круг III · Нижний Хор ───────────── */
+  chorister_shade: {
+    id: 'chorister_shade', name: 'Тень хориста', hp: [30, 34], circle: 3, tier: 'normal', art: 'shade',
+    blurb: 'Поёт одну и ту же строчку триста лет. Остальные слова забыла.',
+    pick: (e) => [atk('note', 'Нота', 7), dbf('hush', 'Шёпот', 'dread', 1, { block: 4 }), atk('aria', 'Ария', 11)][t(e) % 3],
+  },
+  ice_gargoyle: {
+    id: 'ice_gargoyle', name: 'Ледяной горгул', hp: [42, 46], circle: 3, tier: 'normal', art: 'gargoyle',
+    blurb: 'Сидел на карнизе, пока собор тонул. Теперь тонет в собственном льду.',
+    pick: (e) => [def('perch', 'Затаиться', 10), atk('dive', 'Пике', 15), atk('claws', 'Когти', 6, 2, { apply: { status: 'bleed', n: 2 } })][t(e) % 3],
+  },
+  tomb_knight: {
+    id: 'tomb_knight', name: 'Склепный страж', hp: [40, 44], circle: 3, tier: 'normal', art: 'knight',
+    blurb: 'Караулит гробницу, из которой давно никто не выходил. И никто не входил.',
+    pick: (e) => [def('wall', 'Стена щитов', 12, { strength: 1 }), atk('cleave', 'Рубка', 11), atk('bash', 'Удар щитом', 8, 1, { apply: { status: 'dread', n: 1 } })][t(e) % 3],
+  },
+  agneta: {
+    id: 'agneta', name: 'Агнета Седьмая', hp: [74, 74], circle: 3, tier: 'elite', art: 'agneta',
+    blurb: 'Седьмая из Двенадцати. Спела так, что услышал даже камень. Теперь камень не слышит её.',
+    pick: (e) => [atk('voice', 'Голос', 9, 1, { apply: { status: 'chains', n: 1 } }), dbf('lull', 'Колыбельная', 'dread', 2, { block: 10 }), atk('crescendo', 'Крещендо', 22)][t(e) % 3],
+  },
+  twin_a: {
+    id: 'twin_a', name: 'Ильм Первый', hp: [76, 76], circle: 3, tier: 'boss', art: 'twin_a',
+    blurb: 'Близнецы Хора. Один звонит, другой читает. Хор Двенадцати не пел без них.',
+    pick: (e) => [atk('bell', 'Колокол', 11, 1, { blockAll: 6 }), atk('twice', 'Двойной звон', 7, 2), def('guard', 'Заслон', 14, { strength: 1 })][t(e) % 3],
+  },
+  twin_b: {
+    id: 'twin_b', name: 'Ильва Вторая', hp: [76, 76], circle: 3, tier: 'boss', art: 'twin_b',
+    blurb: 'Читает ноты, которых нет. Её брат звонит, пока она читает.',
+    pick: (e) => [dbf('scroll', 'Свиток', 'dread', 2, { block: 6 }), atk('slash', 'Росчерк', 13), atk('flurry', 'Вихрь', 5, 3)][t(e) % 3],
+  },
 };
 
 export const ENCOUNTERS: Record<number, { normal: string[][]; elite: string[][]; boss: string[][] }> = {
@@ -117,5 +148,9 @@ export const ENCOUNTERS: Record<number, { normal: string[][]; elite: string[][];
     elite: [['choir_reaper', 'candle_bearer', 'candle_bearer']],
     boss: [['choirmaster']],
   },
-  3: { normal: [], elite: [], boss: [] },
+  3: {
+    normal: [['chorister_shade'], ['ice_gargoyle'], ['tomb_knight'], ['chorister_shade', 'chorister_shade'], ['tomb_knight', 'chorister_shade']],
+    elite: [['agneta']],
+    boss: [['twin_a', 'twin_b']],
+  },
 };
