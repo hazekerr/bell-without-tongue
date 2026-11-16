@@ -1,19 +1,19 @@
 /* Три подхода к персонажам для сравнения: силуэт, классический пиксель-арт, чибби.
    Фигуры рисуются кривыми и многоугольниками на малом холсте, затем края делаются чёткими, и добавляется контур. */
-type Mat = [string, string, string];
-type Path = (x: CanvasRenderingContext2D) => void;
+export type Mat = [string, string, string];
+export type Path = (x: CanvasRenderingContext2D) => void;
 export type Look = 'flat' | 'cel';
 
-const poly = (pts: number[][]): Path => (x) => { x.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) x.lineTo(p[0], p[1]); x.closePath(); };
-const ell = (cx: number, cy: number, rx: number, ry: number): Path => (x) => { x.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); };
-const rect = (x0: number, y0: number, x1: number, y1: number): Path => (x) => { x.rect(x0, y0, x1 - x0, y1 - y0); };
-const bar = (x1: number, y1: number, x2: number, y2: number, w: number): Path => {
+export const poly = (pts: number[][]): Path => (x) => { x.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) x.lineTo(p[0], p[1]); x.closePath(); };
+export const ell = (cx: number, cy: number, rx: number, ry: number): Path => (x) => { x.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); };
+export const rect = (x0: number, y0: number, x1: number, y1: number): Path => (x) => { x.rect(x0, y0, x1 - x0, y1 - y0); };
+export const bar = (x1: number, y1: number, x2: number, y2: number, w: number): Path => {
   const dx = x2 - x1, dy = y2 - y1, l = Math.hypot(dx, dy) || 1, nx = (-dy / l) * (w / 2), ny = (dx / l) * (w / 2);
   return poly([[x1 + nx, y1 + ny], [x2 + nx, y2 + ny], [x2 - nx, y2 - ny], [x1 - nx, y1 - ny]]);
 };
 
 const INK = '#07080c';
-const M = {
+export const M = {
   coat: ['#3a2a1c', '#5a3d24', '#a8672b'] as Mat,
   hat: ['#12141c', '#1d2230', '#3b4660'] as Mat,
   steel: ['#4d4c50', '#8e8d92', '#d9d2c0'] as Mat,
@@ -30,7 +30,7 @@ const M = {
   skin: ['#8a6a5a', '#c9a58f', '#ecd0b8'] as Mat,
 };
 
-class Pix {
+export class Pix {
   c: HTMLCanvasElement;
   x: CanvasRenderingContext2D;
   constructor(public w: number, public h: number, private look: Look, private rim = '#e8a94a') {
